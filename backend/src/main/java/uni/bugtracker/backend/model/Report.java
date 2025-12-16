@@ -1,6 +1,7 @@
 package uni.bugtracker.backend.model;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -11,7 +12,11 @@ import java.time.Instant;
 import java.util.List;
 
 @Entity
-@Table(name = "report")
+@Table(name = "report",
+        indexes = {
+                @Index(name = "idx_report_session", columnList = "sessionId"),
+                @Index(name = "idx_report_project", columnList = "projectId")
+        })
 @Getter@Setter
 public class Report {
     @Id
@@ -22,8 +27,12 @@ public class Report {
     @JoinColumn(name = "project_id", nullable = false)
     private Project project;
 
-    @NotBlank
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "session_id", nullable = false)
+    private Session session;
+
     @Size(max = 255)
+    @Column(length = 255)
     private String title;
 
     @Enumerated(EnumType.STRING)
@@ -33,27 +42,37 @@ public class Report {
     private List<Tag> tags;
 
     @NotNull
-    private Instant date;
+    private Instant reportedAt;
 
     @Size(max = 5000)
     @Column(length = 5000)
     private String comments;
 
-    @NotBlank
-    @Size(max = 4_000_000)
-    @Column(length = 4_000_000)
-    private String log;
+    @Email
+    @Size(max = 255)
+    @Column(length = 255)
+    private String userEmail;
 
-    @NotBlank
-    @Size(max = 20000)
-    @Column(length = 20000)
-    private String actions;
-
-    @NotBlank
+//    @NotBlank // if our system composes all events, we cannot get screen
     @Lob // large object
     @Column(columnDefinition = "TEXT")
     @Basic(fetch = FetchType.LAZY)  // load the image only while referencing (saving memory when selecting entities)
     private String screen;
+
+    @Size(max = 2048)
+    @Column(nullable = false, length = 2048)
+    private String currentUrl;
+
+    @ElementCollection(fetch = FetchType.LAZY)
+    @Column(name = "related_event_id")
+    private List<Long> relatedEventIds;
+
+    /**
+     * true — report от пользователя
+     * false — собран автоматически
+     */
+    @Column(nullable = false)
+    private boolean userProvided = false;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "developer_id", nullable = true)

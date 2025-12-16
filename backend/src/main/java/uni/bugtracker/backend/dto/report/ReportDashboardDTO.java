@@ -1,4 +1,4 @@
-package uni.bugtracker.backend.dto;
+package uni.bugtracker.backend.dto.report;
 
 
 import lombok.Getter;
@@ -13,7 +13,7 @@ public class ReportDashboardDTO {
     private Long projectId;
     private String title;
     private List<String> tags;
-    private Instant date;
+    private Instant reportedAt;
     private String level;
     private String status;
 
@@ -24,7 +24,7 @@ public class ReportDashboardDTO {
         this.tags = report.getTags().stream()
                 .map(Enum::name) // or (Tag::toString)
                 .toList();
-        this.date = report.getDate();
+        this.reportedAt = report.getReportedAt();
         this.level = report.getCriticality() != null
                 ? report.getCriticality().name()
                 : null;

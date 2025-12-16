@@ -1,21 +1,24 @@
-package uni.bugtracker.backend.dto;
+package uni.bugtracker.backend.dto.report;
 
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Positive;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.*;
 import lombok.Data;
 
 import java.time.Instant;
 import java.util.List;
 
+// only for creation on widget
+
 @Data
-public class ReportRequestWidget {
+public class ReportCreationRequestWidget {
     @NotNull
     @Positive
     private Long projectId;
 
-    @NotBlank
+    @NotNull
+    @Positive
+    private Long sessionId;
+
+    @NotBlank(message = "Report title cannot be empty")
     @Size(max = 255, message = "To long report title, max={max}")
     private String title;
 
@@ -24,19 +27,23 @@ public class ReportRequestWidget {
     private List<String> tags;
 
     @NotNull
-    private Instant date;
+    private Instant reportedAt;
 
     @Size(max = 5000, message = "Too long comments, max={max}")
     private String comments;
 
-    @NotBlank
-    private String log;
-
-    @NotBlank
-    private String actions;
+    @Email
+    private String userEmail;
 
     @NotBlank
     private String screen;
+
+    @NotBlank
+    private String currentUrl;
+
+    @NotNull
+    private Boolean userProvided;
+
 }
 
 

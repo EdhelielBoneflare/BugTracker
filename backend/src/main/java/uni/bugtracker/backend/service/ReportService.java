@@ -1,133 +1,85 @@
 package uni.bugtracker.backend.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-import uni.bugtracker.backend.dto.ReportCardDTO;
-import uni.bugtracker.backend.dto.ReportDashboardDTO;
-import uni.bugtracker.backend.dto.ReportRequestDashboard;
-import uni.bugtracker.backend.dto.ReportRequestWidget;
-import uni.bugtracker.backend.model.Project;
-import uni.bugtracker.backend.model.Report;
-import uni.bugtracker.backend.model.ReportStatus;
-import uni.bugtracker.backend.model.Tag;
-import uni.bugtracker.backend.repository.ProjectRepository;
-import uni.bugtracker.backend.repository.ReportRepository;
+import uni.bugtracker.backend.dto.report.ReportCardDTO;
+import uni.bugtracker.backend.dto.report.ReportDashboardDTO;
+import uni.bugtracker.backend.dto.report.ReportUpdateRequestDashboard;
+import uni.bugtracker.backend.dto.report.ReportCreationRequestWidget;
+import uni.bugtracker.backend.model.*;
+import uni.bugtracker.backend.repository.*;
+import uni.bugtracker.backend.utility.ReportMapper;
 
-import java.util.List;
-import java.util.NoSuchElementException;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
 public class ReportService {
     private final ReportRepository reportRepository;
     private final ProjectRepository projectRepository;
+    private final SessionRepository sessionRepository;
+    private final DeveloperRepository developerRepository;
+    private final EventRepository eventRepository;
+    private final ReportMapper mapper;
 
     private static final int MAX_TAGS = 10;
     private static final int MAX_COMMENTS = 5000;
-    private static final int MAX_LOG = 5_000_000;
-    private static final int MAX_ACTIONS = 20_000;
 
-    public Report createReport(ReportRequestWidget request) {
-        Report entity = new Report();
-
+    @Transactional
+    public Long createReport(ReportCreationRequestWidget request) {
         Project project = projectRepository.findById(request.getProjectId())
                 .orElseThrow(() -> new NoSuchElementException("Project doesn't exist"));
-        entity.setProject(project);
-        entity.setTitle(trim(request.getTitle(), 255));
-        entity.setDate(request.getDate());
-
-        List<Tag> tags = request.getTags().stream()
-                .map(String::trim)
-                .map(String::toUpperCase)
-                .filter(s -> isValidEnum(Tag.class, s))
-                .limit(MAX_TAGS)
-                .map(Tag::valueOf)
-                .toList();
-        entity.setTags(tags);
-
-        entity.setComments(trim(request.getComments(), MAX_COMMENTS));
-        entity.setLog(trim(request.getLog(), MAX_LOG));
-        entity.setActions(trim(request.getActions(), MAX_ACTIONS));
-        entity.setScreen(request.getScreen());
-
-        // default values
-        entity.setStatus(ReportStatus.NEW);
-//        entity.setCriticality(CriticalityLevel.MEDIUM);
-
-        return reportRepository.save(entity);
+        Session session = sessionRepository.findById(request.getSessionId())
+                .orElseThrow(() -> new NoSuchElementException("Session doesn't exist"));
+        Report report = mapper.fromCreateOnWidget(request, project, session);
+        List<Event> events = eventRepository.findAllBySessionId(session.getId());
+        mapper.attachEvents(report, events);
+        session.setEndTime(
+                eventRepository.findFirstBySessionIdOrderByTimestampDesc(session.getId())
+                        .map(Event::getTimestamp)
+                        .orElse(null)
+        );
+        return reportRepository.save(report).getId();
     }
 
-    @Transactional
-    public Report updateReportFromWidget(Long id, ReportRequestWidget request) {
-        Report report = reportRepository.findById(id)
-                .orElseThrow(() -> new NoSuchElementException("Report doesn't exist"));
-        if (request.getProjectId() != null) {
-            Project project = projectRepository.findById(request.getProjectId())
-                            .orElseThrow(() -> new NoSuchElementException("Project doesn't exist"));
-            report.setProject(project);
-        }
-        if (request.getTitle() != null) {
-            report.setTitle(trim(request.getTitle(), 255));
-        }
-        if (request.getDate() != null) {
-            report.setDate(request.getDate());
-        }
-        if (request.getLog() != null) {
-            report.setLog(trim(request.getLog(), MAX_LOG));
-        }
-        if (request.getComments() != null) {
-            report.setComments(trim(request.getComments(), MAX_COMMENTS));
-        }
-        if (request.getActions() != null) {
-            report.setActions(trim(request.getActions(), MAX_ACTIONS));
-        }
-        if (request.getScreen() != null) {
-            report.setScreen(request.getScreen());
-        }
-        if (request.getTags() != null) {
-            List<Tag> newTags = request.getTags().stream()
-                    .map(String::trim)
-                    .map(String::toUpperCase)
-                    .limit(MAX_TAGS)
-                    .filter(s -> isValidEnum(Tag.class, s))
-                    .map(Tag::valueOf)
-                    .toList();
-            report.setTags(newTags);
-        }
-        return reportRepository.save(report);
-    }
 
     @Transactional
-    public Report updateReportFromDashboard(Long id, ReportRequestDashboard request) {
+    public ReportCardDTO updateReportFromDashboard(Long id, Map<String, Object> raw) {
         Report report = reportRepository.findById(id)
                 .orElseThrow(() -> new NoSuchElementException("Report doesn't exist"));
-        if (request.getProjectId() != null) {
-            Project project = projectRepository.findById(request.getProjectId())
-                    .orElseThrow(() -> new NoSuchElementException("Project doesn't exist"));
-            report.setProject(project);
+
+        Set<String> fields = raw.keySet();
+
+        Project project = null;
+        if (fields.contains("projectId")) {
+            Long projectId = getLongValue(raw, "projectId");
+            if (projectId == null)
+                throw new IllegalArgumentException("projectId cannot be null");
+
+            project = projectRepository.findById(projectId)
+                    .orElseThrow(() ->
+                            new NoSuchElementException("Project with id " + projectId + " doesn't exist"));
         }
-        if (request.getTitle() != null) {
-            report.setTitle(trim(request.getTitle(), 255));
+
+        Developer developer = null;
+        if (fields.contains("developerName")) {
+            String developerName = getStringValue(raw, "developerName");
+            if (developerName != null) {
+                developer = developerRepository
+                        .findByUsername(developerName)
+                        .orElseThrow(() ->
+                                new NoSuchElementException(
+                                        "Developer '" + developerName + "' doesn't exist"));
+            }
         }
-        if (request.getDate() != null) {
-            report.setDate(request.getDate());
-        }
-        if (request.getComments() != null) {
-            report.setComments(trim(request.getComments(), MAX_COMMENTS));
-        }
-        if (request.getTags() != null) {
-            List<Tag> newTags = request.getTags().stream()
-                    .map(String::trim)
-                    .map(String::toUpperCase)
-                    .limit(MAX_TAGS)
-                    .filter(s -> isValidEnum(Tag.class, s))
-                    .map(Tag::valueOf)
-                    .toList();
-            report.setTags(newTags);
-        }
-        return reportRepository.save(report);
+        report = mapper.updateFromDashboard(report, raw, fields, project, developer);
+        return new ReportCardDTO(reportRepository.save(report));
     }
 
     public Report getReport(Long id) {
@@ -141,18 +93,15 @@ public class ReportService {
         return new ReportCardDTO(report);
     }
 
-    public List<ReportDashboardDTO> getAllReportsOfProject(Long projectId, Pageable pageable) {
-        return reportRepository.findAllByProjectId(projectId, pageable)
-                .stream()
-                .map(ReportDashboardDTO::new)
-                .toList();
+    @Transactional
+    public Page<ReportDashboardDTO> getAllReportsOfProject(Long projectId, Pageable pageable) {
+        Page<Report> reportsPage = reportRepository.findAllByProjectId(projectId, pageable);
+        return reportsPage.map(ReportDashboardDTO::new);
     }
 
-    public List<ReportDashboardDTO> getAllReportsSolved(Pageable pageable) {
-        return reportRepository.findAllByStatus(ReportStatus.DONE, pageable)
-                .stream()
-                .map(ReportDashboardDTO::new)
-                .toList();
+    public Page<ReportDashboardDTO> getAllReportsSolvedOnProject(Long projectId, Pageable pageable) {
+        Page<Report> reportsPage = reportRepository.findAllByProjectIdAndStatus(projectId, ReportStatus.DONE, pageable);
+        return reportsPage.map(ReportDashboardDTO::new);
     }
 
     @Transactional
@@ -176,4 +125,17 @@ public class ReportService {
             return false;
         }
     }
+
+    private Long getLongValue(Map<String, Object> map, String key) {
+        Object value = map.get(key);
+        if (value == null) return null;
+        if (value instanceof Number) return ((Number) value).longValue();
+        return Long.valueOf(value.toString());
+    }
+
+    private String getStringValue(Map<String, Object> map, String key) {
+        Object value = map.get(key);
+        return value == null ? null : value.toString();
+    }
 }
+

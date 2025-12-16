@@ -16,5 +16,5 @@ public interface ReportRepository extends JpaRepository<Report, Long> {
 
     Page<Report> findAllByProjectId(Long projectId, Pageable pageable);
     Page<Report> findAllByStatus(ReportStatus status, Pageable pageable);
-
+    Page<Report> findAllByProjectIdAndStatus(Long projectId, ReportStatus status, Pageable pageable);
 }

@@ -1,4 +1,4 @@
-package uni.bugtracker.backend.dto;
+package uni.bugtracker.backend.dto.report;
 
 
 import lombok.Getter;
@@ -11,37 +11,44 @@ import java.util.List;
 public class ReportCardDTO {
     private Long id;
     private Long projectId;
+    private Long sessionId;
     private String title;
     private List<String> tags;
-    private Instant date;
+    private Instant reportedAt;
+    private String comments;
+    private String userEmail;
+    private String screen;
+    private String currentUrl;
+    private Boolean userProvided;
+    private List<Long> eventIDs;
     private String level;
     private String status;
-    private String log;
-    private String actions;
-    private String comments;
-    private String screen;
-    private String devName;
+    private String developerName;
 
 
     public ReportCardDTO(Report report) {
         this.id = report.getId();
         this.projectId = report.getProject().getId();
+        this.sessionId = report.getSession().getId();
         this.title = report.getTitle();
         this.tags = report.getTags().stream()
                 .map(Enum::name)
                 .toList();
-        this.date = report.getDate();
+        this.reportedAt = report.getReportedAt();
+        this.comments = report.getComments();
+        this.userEmail = report.getUserEmail();
+        this.screen = report.getScreen();
+        this.currentUrl = report.getCurrentUrl();
+        this.userProvided = report.isUserProvided();
+        this.eventIDs = report.getRelatedEventIds();
         this.level = report.getCriticality() != null
                 ? report.getCriticality().name()
                 : null;
         this.status = report.getStatus()!= null
                 ? report.getStatus().name()
                 : null;
-        this.log = report.getLog();
-        this.actions = report.getActions();
-        this.comments = report.getComments();
-        this.screen = report.getScreen();
-        this.devName = report.getDeveloper()!=null
+
+        this.developerName = report.getDeveloper()!=null
                 ? report.getDeveloper().getUsername()
                 : null;
     }

@@ -1,22 +1,27 @@
 package uni.bugtracker.backend.controller;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import uni.bugtracker.backend.dto.ReportCardDTO;
-import uni.bugtracker.backend.dto.ReportDashboardDTO;
-import uni.bugtracker.backend.dto.ReportRequestDashboard;
-import uni.bugtracker.backend.dto.ReportRequestWidget;
+import uni.bugtracker.backend.dto.report.ReportCardDTO;
+import uni.bugtracker.backend.dto.report.ReportDashboardDTO;
+import uni.bugtracker.backend.dto.report.ReportUpdateRequestDashboard;
+import uni.bugtracker.backend.dto.report.ReportCreationRequestWidget;
 import uni.bugtracker.backend.service.ReportService;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
-@RequestMapping("/reports")
+@RequestMapping("/api/reports")
 public class ReportController {
     private final ReportService reportService;
 
@@ -25,41 +30,44 @@ public class ReportController {
     }
 
     // only for widget
-    @PostMapping("/create")
-    public ResponseEntity<?> create(@Valid @RequestBody ReportRequestWidget request) {
-        return new ResponseEntity<>(reportService.createReport(request), HttpStatus.CREATED);
-    }
-
-    // for widget
-    @PatchMapping("/update/{id}")
-    public ResponseEntity<?> update(
-            @PathVariable Long id,
-            @Valid @RequestBody ReportRequestWidget request
-    ) {
-        return new ResponseEntity<>(reportService.updateReportFromWidget(id, request), HttpStatus.OK);
+    @PostMapping("/widget")
+    public ResponseEntity<?> create(@Valid @RequestBody ReportCreationRequestWidget request) {
+        return new ResponseEntity<>(Map.of(
+                "message", "Report created",
+                "reportId", reportService.createReport(request)),
+                HttpStatus.CREATED);
     }
 
     // access only developer
-    @PatchMapping("/update/dev/{id}")
-    public ResponseEntity<?> updateDev(
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
+            description = "Partial data to update",
+            content = @Content(
+                    schema = @Schema(implementation = ReportUpdateRequestDashboard.class)
+            )
+    )
+    @PatchMapping("/{id}/dashboard")
+    public ResponseEntity<ReportCardDTO> updateDev(
             @PathVariable Long id,
-            @Valid @RequestBody ReportRequestDashboard request
+            @RequestBody Map<String, Object> raw
     ) {
-        return new ResponseEntity<>(reportService.updateReportFromDashboard(id, request), HttpStatus.OK);
+        return new ResponseEntity<>(
+                reportService.updateReportFromDashboard(id, raw),
+                HttpStatus.OK
+        );
     }
 
     @GetMapping("/byProject/{projectId}")
-    public ResponseEntity<?> getAllByProject(
+    public ResponseEntity<Page<ReportDashboardDTO>> getAllByProject(
             @PathVariable Long projectId,
             @PageableDefault(
                     page = 0,
                     size = 30,
-                    sort = "date",
+                    sort = "reportedAt",
                     direction = Sort.Direction.DESC
             ) Pageable pageable
     ) {
         HttpStatus responseStatus = HttpStatus.OK;
-        List<ReportDashboardDTO> listOfAllOnProject = reportService.getAllReportsOfProject(projectId, pageable);
+        Page<ReportDashboardDTO> listOfAllOnProject = reportService.getAllReportsOfProject(projectId, pageable);
         if (listOfAllOnProject.isEmpty()) {
             responseStatus = HttpStatus.NO_CONTENT;
         }
@@ -67,23 +75,24 @@ public class ReportController {
     }
 
     @GetMapping("/{reportId}")
-    public ResponseEntity<?> getReportCard(
+    public ResponseEntity<ReportCardDTO> getReportCard(
         @PathVariable Long reportId
     ) {
         return new ResponseEntity<>(reportService.getReportCard(reportId), HttpStatus.OK);
     }
 
-    @GetMapping("/solved")
-    public ResponseEntity<?> getAllReportsSolved(
+    @GetMapping("/byProject/{projectId}/solved")
+    public ResponseEntity<Page<ReportDashboardDTO>> getAllReportsSolved(
             @PageableDefault(
                     page = 0,
                     size = 30,
-                    sort = "date",
+                    sort = "reportedAt",
                     direction = Sort.Direction.DESC
-            ) Pageable pageable
+            ) Pageable pageable,
+            @PathVariable Long projectId
     ) {
         HttpStatus responseStatus = HttpStatus.OK;
-        List<ReportDashboardDTO> listOfSolved = reportService.getAllReportsSolved(pageable);
+        Page<ReportDashboardDTO> listOfSolved = reportService.getAllReportsSolvedOnProject(projectId, pageable);
         if (listOfSolved.isEmpty()) {
             responseStatus = HttpStatus.NO_CONTENT;
         }
