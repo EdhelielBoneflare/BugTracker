@@ -1,5 +1,8 @@
 package uni.bugtracker.backend.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -8,6 +11,7 @@ import org.springframework.stereotype.Service;
 import uni.bugtracker.backend.dto.report.ReportCardDTO;
 import uni.bugtracker.backend.dto.report.ReportDashboardDTO;
 import uni.bugtracker.backend.dto.report.ReportCreationRequestWidget;
+import uni.bugtracker.backend.dto.report.ReportUpdateRequestDashboard;
 import uni.bugtracker.backend.exception.BusinessValidationException;
 import uni.bugtracker.backend.exception.ResourceNotFoundException;
 import uni.bugtracker.backend.model.*;
@@ -25,9 +29,6 @@ public class ReportService {
     private final DeveloperRepository developerRepository;
     private final EventRepository eventRepository;
     private final ReportMapper mapper;
-
-    private static final int MAX_TAGS = 10;
-    private static final int MAX_COMMENTS = 5000;
 
     @Transactional
     public Long createReport(ReportCreationRequestWidget request) {
@@ -48,35 +49,40 @@ public class ReportService {
 
 
     @Transactional
-    public ReportCardDTO updateReportFromDashboard(Long id, Map<String, Object> raw) {
+    public ReportCardDTO updateReportFromDashboard(Long id, ReportUpdateRequestDashboard request, String rawJson) {
+        ObjectMapper objMapper = new ObjectMapper();
+        JsonNode jsonNode;
+        try {
+            jsonNode = objMapper.readTree(rawJson);
+        } catch (JsonProcessingException e) {
+            throw new BusinessValidationException("Invalid JSON", e.toString());
+        }
+        Set<String> fields = getJsonFields(jsonNode);
+
         Report report = reportRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Report doesn't exist"));
 
-        Set<String> fields = raw.keySet();
-
         Project project = null;
         if (fields.contains("projectId")) {
-            Long projectId = getLongValue(raw, "projectId");
-            if (projectId == null)
+            if (request.getProjectId() == null)
                 throw new BusinessValidationException("INVALID_ARGUMENT", "projectId cannot be null");
 
-            project = projectRepository.findById(projectId)
+            project = projectRepository.findById(request.getProjectId())
                     .orElseThrow(() ->
-                            new ResourceNotFoundException("Project with id " + projectId + " doesn't exist"));
+                            new ResourceNotFoundException("Project with id " + request.getProjectId() + " doesn't exist"));
         }
 
         Developer developer = null;
         if (fields.contains("developerName")) {
-            String developerName = getStringValue(raw, "developerName");
-            if (developerName != null) {
+            if (request.getDeveloperName() != null) {
                 developer = developerRepository
-                        .findByUsername(developerName)
+                        .findByUsername(request.getDeveloperName())
                         .orElseThrow(() ->
                                 new ResourceNotFoundException(
-                                        "Developer '" + developerName + "' doesn't exist"));
+                                        "Developer '" + request.getDeveloperName() + "' doesn't exist"));
             }
         }
-        report = mapper.updateFromDashboard(report, raw, fields, project, developer);
+        report = mapper.updateFromDashboard(report, request, fields, project, developer);
         return new ReportCardDTO(reportRepository.save(report));
     }
 
@@ -110,30 +116,17 @@ public class ReportService {
         return new ReportCardDTO(report);
     }
 
-    private String trim(String s, int max) {
-        if (s == null) return null;
-        return s.length() <= max ? s : s.substring(0, max);
-    }
-
-    private <E extends Enum<E>> boolean isValidEnum(Class<E> enumClass, String value) {
-        try {
-            Enum.valueOf(enumClass, value);
-            return true;
-        } catch (IllegalArgumentException ex) {
-            return false;
+    private Set<String> getJsonFields(JsonNode node) {
+        Set<String> fields = new HashSet<>();
+        if (node.isObject()) {
+//            Iterator<String> fieldNames = node.fieldNames();
+//            while (fieldNames.hasNext()) {
+//                fields.add(fieldNames.next());
+//            }
+            node.fieldNames().forEachRemaining(fields::add);
         }
+        return fields;
     }
 
-    private Long getLongValue(Map<String, Object> map, String key) {
-        Object value = map.get(key);
-        if (value == null) return null;
-        if (value instanceof Number) return ((Number) value).longValue();
-        return Long.valueOf(value.toString());
-    }
-
-    private String getStringValue(Map<String, Object> map, String key) {
-        Object value = map.get(key);
-        return value == null ? null : value.toString();
-    }
 }
 

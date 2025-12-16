@@ -2,14 +2,13 @@ package uni.bugtracker.backend.utility;
 
 import org.springframework.stereotype.Component;
 import uni.bugtracker.backend.dto.report.ReportCreationRequestWidget;
+import uni.bugtracker.backend.dto.report.ReportUpdateRequestDashboard;
 import uni.bugtracker.backend.exception.BusinessValidationException;
 import uni.bugtracker.backend.model.*;
 
-import java.time.Instant;
-import java.time.format.DateTimeParseException;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Component
 public class ReportMapper {
@@ -28,13 +27,14 @@ public class ReportMapper {
         report.setSession(session);
         report.setTitle(trim(request.getTitle(), MAX_TITLE));
 
+        // ignore unknown tags
         List<Tag> tags = request.getTags().stream()
                 .map(String::trim)
                 .map(String::toUpperCase)
                 .filter(s -> isValidEnum(Tag.class, s))
                 .limit(MAX_TAGS)
                 .map(Tag::valueOf)
-                .toList();
+                .collect(Collectors.toList());
         report.setTags(tags);
 
         report.setReportedAt(request.getReportedAt());
@@ -49,7 +49,7 @@ public class ReportMapper {
     }
 
     public Report updateFromDashboard(Report report,
-                                      Map<String, Object> raw,
+                                      ReportUpdateRequestDashboard request,
                                       Set<String> fields,
                                       Project project,
                                       Developer developer
@@ -59,13 +59,12 @@ public class ReportMapper {
         }
 
         if (fields.contains("title")) {
-            String title = getStringValue(raw, "title");
-            report.setTitle(trim(title, MAX_TITLE));
+            report.setTitle(trim(request.getTitle(), MAX_TITLE));
         }
 
+        // ignore unknown tags
         if (fields.contains("tags")) {
-            @SuppressWarnings("unchecked")
-            List<String> tags = (List<String>) raw.get("tags");
+            List<String> tags = request.getTags();
             report.setTags(tags == null ? null :
                 tags.stream()
                         .map(String::trim)
@@ -73,19 +72,17 @@ public class ReportMapper {
                         .limit(MAX_TAGS)
                         .filter(this::isValidTag)
                         .map(Tag::valueOf)
-                        .toList());
+                        .collect(Collectors.toList()));
         }
 
         if (fields.contains("reportedAt")) {
-            Instant reportedAt = getInstantValue(raw, "reportedAt");
-            if (reportedAt == null)
+            if (request.getReportedAt() == null)
                 throw new BusinessValidationException("INVALID_ARGUMENT", "reportedAt cannot be null");
-            report.setReportedAt(reportedAt);
+            report.setReportedAt(request.getReportedAt());
         }
 
         if (fields.contains("comments")) {
-            String comments = getStringValue(raw, "comments");
-            report.setComments(trim(comments, MAX_COMMENTS));
+            report.setComments(trim(request.getComments(), MAX_COMMENTS));
         }
 
         if (fields.contains("developerName")) {
@@ -93,22 +90,19 @@ public class ReportMapper {
         }
 
         if (fields.contains("level")) {
-            CriticalityLevel level = getEnumValue(raw, "level", CriticalityLevel.class);
-            report.setCriticality(level);
+            report.setCriticality(request.getLevel());
         }
 
         if (fields.contains("status")) {
-            ReportStatus status = getEnumValue(raw, "status", ReportStatus.class);
-            if (status == null)
+            if (request.getStatus() == null)
                 throw new BusinessValidationException("INVALID_ARGUMENT", "status cannot be null");
-            report.setStatus(status);
+            report.setStatus(request.getStatus());
         }
 
         if (fields.contains("userProvided")) {
-            Boolean userProvided = getBooleanValue(raw, "userProvided");
-            if (userProvided == null)
+            if (request.getUserProvided() == null)
                 throw new BusinessValidationException("INVALID_ARGUMENT", "userProvided cannot be null");
-            report.setUserProvided(userProvided);
+            report.setUserProvided(request.getUserProvided());
         }
         return report;
     }
@@ -142,39 +136,5 @@ public class ReportMapper {
         } catch (IllegalArgumentException e) {
             return false;
         }
-    }
-
-    private String getStringValue(Map<String, Object> map, String key) {
-        Object value = map.get(key);
-        return value == null ? null : value.toString();
-    }
-
-    private Instant getInstantValue(Map<String, Object> map, String key) {
-        Object value = map.get(key);
-        if (value instanceof String) {
-            try {
-                return Instant.parse((String) value);
-            } catch (DateTimeParseException e) {
-                throw new BusinessValidationException("INVALID_ARGUMENT", "Invalid reportedAt format");
-            }
-        }
-        return null;
-    }
-
-    private <E extends Enum<E>> E getEnumValue(Map<String, Object> map, String key, Class<E> enumClass) {
-        Object value = map.get(key);
-        if (value == null) return null;
-        try {
-            return Enum.valueOf(enumClass, value.toString().toUpperCase());
-        } catch (IllegalArgumentException e) {
-            throw new BusinessValidationException("INVALID_ARGUMENT", "Invalid " + key + " value");
-        }
-    }
-
-    private Boolean getBooleanValue(Map<String, Object> map, String key) {
-        Object value = map.get(key);
-        if (value instanceof Boolean) return (Boolean) value;
-        if (value instanceof String) return Boolean.parseBoolean((String) value);
-        return null;
     }
 }

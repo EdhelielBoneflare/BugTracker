@@ -1,8 +1,6 @@
 package uni.bugtracker.backend.controller;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -11,13 +9,15 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.util.ContentCachingRequestWrapper;
+import org.springframework.web.util.WebUtils;
 import uni.bugtracker.backend.dto.report.ReportCardDTO;
 import uni.bugtracker.backend.dto.report.ReportDashboardDTO;
 import uni.bugtracker.backend.dto.report.ReportUpdateRequestDashboard;
 import uni.bugtracker.backend.dto.report.ReportCreationRequestWidget;
 import uni.bugtracker.backend.service.ReportService;
 
-import java.util.List;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 @RestController
@@ -39,19 +39,15 @@ public class ReportController {
     }
 
     // access only developer
-    @io.swagger.v3.oas.annotations.parameters.RequestBody(
-            description = "Partial data to update",
-            content = @Content(
-                    schema = @Schema(implementation = ReportUpdateRequestDashboard.class)
-            )
-    )
     @PatchMapping("/{id}/dashboard")
     public ResponseEntity<ReportCardDTO> updateDev(
             @PathVariable Long id,
-            @RequestBody Map<String, Object> raw
+            @RequestBody ReportUpdateRequestDashboard request,
+            HttpServletRequest httpRequest
     ) {
+        String rawJson = getRawJson(httpRequest);
         return new ResponseEntity<>(
-                reportService.updateReportFromDashboard(id, raw),
+                reportService.updateReportFromDashboard(id, request, rawJson),
                 HttpStatus.OK
         );
     }
@@ -103,5 +99,15 @@ public class ReportController {
     public ResponseEntity<?> delete(@PathVariable Long id) {
         ReportCardDTO deletedReport = reportService.deleteReport(id);
         return new ResponseEntity<>(deletedReport, HttpStatus.OK);
+    }
+
+    private String getRawJson(HttpServletRequest request) {
+        ContentCachingRequestWrapper wrapper =
+                WebUtils.getNativeRequest(request, ContentCachingRequestWrapper.class);
+
+        if (wrapper != null && wrapper.getContentAsByteArray().length > 0) {
+            return new String(wrapper.getContentAsByteArray(), StandardCharsets.UTF_8);
+        }
+        return "{}";
     }
 }
