@@ -1,17 +1,15 @@
 package uni.bugtracker.backend.service;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import uni.bugtracker.backend.dto.report.ReportCardDTO;
 import uni.bugtracker.backend.dto.report.ReportDashboardDTO;
-import uni.bugtracker.backend.dto.report.ReportUpdateRequestDashboard;
 import uni.bugtracker.backend.dto.report.ReportCreationRequestWidget;
+import uni.bugtracker.backend.exception.BusinessValidationException;
+import uni.bugtracker.backend.exception.ResourceNotFoundException;
 import uni.bugtracker.backend.model.*;
 import uni.bugtracker.backend.repository.*;
 import uni.bugtracker.backend.utility.ReportMapper;
@@ -34,9 +32,9 @@ public class ReportService {
     @Transactional
     public Long createReport(ReportCreationRequestWidget request) {
         Project project = projectRepository.findById(request.getProjectId())
-                .orElseThrow(() -> new NoSuchElementException("Project doesn't exist"));
+                .orElseThrow(() -> new ResourceNotFoundException("Project doesn't exist"));
         Session session = sessionRepository.findById(request.getSessionId())
-                .orElseThrow(() -> new NoSuchElementException("Session doesn't exist"));
+                .orElseThrow(() -> new ResourceNotFoundException("Session doesn't exist"));
         Report report = mapper.fromCreateOnWidget(request, project, session);
         List<Event> events = eventRepository.findAllBySessionId(session.getId());
         mapper.attachEvents(report, events);
@@ -52,7 +50,7 @@ public class ReportService {
     @Transactional
     public ReportCardDTO updateReportFromDashboard(Long id, Map<String, Object> raw) {
         Report report = reportRepository.findById(id)
-                .orElseThrow(() -> new NoSuchElementException("Report doesn't exist"));
+                .orElseThrow(() -> new ResourceNotFoundException("Report doesn't exist"));
 
         Set<String> fields = raw.keySet();
 
@@ -60,11 +58,11 @@ public class ReportService {
         if (fields.contains("projectId")) {
             Long projectId = getLongValue(raw, "projectId");
             if (projectId == null)
-                throw new IllegalArgumentException("projectId cannot be null");
+                throw new BusinessValidationException("INVALID_ARGUMENT", "projectId cannot be null");
 
             project = projectRepository.findById(projectId)
                     .orElseThrow(() ->
-                            new NoSuchElementException("Project with id " + projectId + " doesn't exist"));
+                            new ResourceNotFoundException("Project with id " + projectId + " doesn't exist"));
         }
 
         Developer developer = null;
@@ -74,7 +72,7 @@ public class ReportService {
                 developer = developerRepository
                         .findByUsername(developerName)
                         .orElseThrow(() ->
-                                new NoSuchElementException(
+                                new ResourceNotFoundException(
                                         "Developer '" + developerName + "' doesn't exist"));
             }
         }
@@ -84,12 +82,12 @@ public class ReportService {
 
     public Report getReport(Long id) {
         return reportRepository.findById(id)
-                .orElseThrow(() -> new NoSuchElementException("Report doesn't exist"));
+                .orElseThrow(() -> new ResourceNotFoundException("Report doesn't exist"));
     }
 
     public ReportCardDTO getReportCard(Long id) {
         Report report = reportRepository.findById(id)
-                .orElseThrow(() -> new NoSuchElementException("Report doesn't exist"));
+                .orElseThrow(() -> new ResourceNotFoundException("Report doesn't exist"));
         return new ReportCardDTO(report);
     }
 
@@ -107,7 +105,7 @@ public class ReportService {
     @Transactional
     public ReportCardDTO deleteReport(Long id) {
         Report report = reportRepository.findById(id)
-                .orElseThrow(() -> new NoSuchElementException("Report doesn't exist"));
+                .orElseThrow(() -> new ResourceNotFoundException("Report doesn't exist"));
         reportRepository.delete(report);
         return new ReportCardDTO(report);
     }

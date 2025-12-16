@@ -2,7 +2,7 @@ package uni.bugtracker.backend.utility;
 
 import org.springframework.stereotype.Component;
 import uni.bugtracker.backend.dto.report.ReportCreationRequestWidget;
-import uni.bugtracker.backend.dto.report.ReportUpdateRequestDashboard;
+import uni.bugtracker.backend.exception.BusinessValidationException;
 import uni.bugtracker.backend.model.*;
 
 import java.time.Instant;
@@ -79,7 +79,7 @@ public class ReportMapper {
         if (fields.contains("reportedAt")) {
             Instant reportedAt = getInstantValue(raw, "reportedAt");
             if (reportedAt == null)
-                throw new IllegalArgumentException("reportedAt cannot be null");
+                throw new BusinessValidationException("INVALID_ARGUMENT", "reportedAt cannot be null");
             report.setReportedAt(reportedAt);
         }
 
@@ -89,7 +89,7 @@ public class ReportMapper {
         }
 
         if (fields.contains("developerName")) {
-            report.setDeveloper(developer); // null допустим → очистка
+            report.setDeveloper(developer);
         }
 
         if (fields.contains("level")) {
@@ -100,14 +100,14 @@ public class ReportMapper {
         if (fields.contains("status")) {
             ReportStatus status = getEnumValue(raw, "status", ReportStatus.class);
             if (status == null)
-                throw new IllegalArgumentException("status cannot be null");
+                throw new BusinessValidationException("INVALID_ARGUMENT", "status cannot be null");
             report.setStatus(status);
         }
 
         if (fields.contains("userProvided")) {
             Boolean userProvided = getBooleanValue(raw, "userProvided");
             if (userProvided == null)
-                throw new IllegalArgumentException("userProvided cannot be null");
+                throw new BusinessValidationException("INVALID_ARGUMENT", "userProvided cannot be null");
             report.setUserProvided(userProvided);
         }
         return report;
@@ -155,7 +155,7 @@ public class ReportMapper {
             try {
                 return Instant.parse((String) value);
             } catch (DateTimeParseException e) {
-                throw new IllegalArgumentException("Invalid reportedAt format");
+                throw new BusinessValidationException("INVALID_ARGUMENT", "Invalid reportedAt format");
             }
         }
         return null;
@@ -167,7 +167,7 @@ public class ReportMapper {
         try {
             return Enum.valueOf(enumClass, value.toString().toUpperCase());
         } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("Invalid " + key + " value");
+            throw new BusinessValidationException("INVALID_ARGUMENT", "Invalid " + key + " value");
         }
     }
 

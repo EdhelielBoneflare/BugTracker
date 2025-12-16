@@ -1,5 +1,6 @@
 package uni.bugtracker.backend.service;
 
+import uni.bugtracker.backend.exception.ResourceNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -11,7 +12,6 @@ import uni.bugtracker.backend.repository.EventRepository;
 import uni.bugtracker.backend.repository.SessionRepository;
 
 import java.util.List;
-import java.util.NoSuchElementException;
 
 @Service
 @RequiredArgsConstructor
@@ -28,7 +28,7 @@ public class EventService {
     public Long createEvent(EventRequest request) {
         Session session = sessionRepository.findById(request.getSessionId())
                 .orElseThrow(() ->
-                        new NoSuchElementException("Session not found: " + request.getSessionId())
+                        new ResourceNotFoundException("Session not found: " + request.getSessionId())
                 );
 
         Event event = new Event();
@@ -57,7 +57,7 @@ public class EventService {
 
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() ->
-                        new NoSuchElementException("Event not found: " + eventId)
+                        new ResourceNotFoundException("Event not found: " + eventId)
                 );
 
         return new EventDetailsResponse(event);

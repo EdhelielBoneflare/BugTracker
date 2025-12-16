@@ -6,12 +6,12 @@ import org.springframework.stereotype.Service;
 import uni.bugtracker.backend.dto.session.SessionCreationResponse;
 import uni.bugtracker.backend.dto.session.SessionDetailsResponse;
 import uni.bugtracker.backend.dto.session.SessionRequest;
+import uni.bugtracker.backend.exception.ResourceNotFoundException;
 import uni.bugtracker.backend.model.Project;
 import uni.bugtracker.backend.model.Session;
 import uni.bugtracker.backend.repository.ProjectRepository;
 import uni.bugtracker.backend.repository.SessionRepository;
 
-import java.util.NoSuchElementException;
 
     @Service
     @RequiredArgsConstructor
@@ -24,7 +24,7 @@ import java.util.NoSuchElementException;
 
         Project project = projectRepository.findById(request.getProjectId())
                 .orElseThrow(() ->
-                        new NoSuchElementException(
+                        new ResourceNotFoundException(
                                 "Project not found: " + request.getProjectId()
                         )
                 );
@@ -56,7 +56,7 @@ import java.util.NoSuchElementException;
 
     public SessionDetailsResponse getSession(Long sessionId) {
         Session session = sessionRepository.findById(sessionId)
-                .orElseThrow(() -> new NoSuchElementException("Session not found: " + sessionId));
+                .orElseThrow(() -> new ResourceNotFoundException("Session not found: " + sessionId));
         return new SessionDetailsResponse(session);
     }
 }
