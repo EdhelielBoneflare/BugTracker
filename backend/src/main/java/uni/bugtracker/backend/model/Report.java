@@ -60,7 +60,7 @@ public class Report {
     private String screen;
 
     @Size(max = 2048)
-    @Column(nullable = false, length = 2048)
+    @Column(length = 2048)
     private String currentUrl;
 
     @ElementCollection(fetch = FetchType.LAZY)
