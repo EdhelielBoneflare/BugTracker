@@ -35,7 +35,7 @@ public class SessionDetailsResponse {
         this.os = session.getOs();
         this.deviceType = session.getDeviceType();
         this.screenResolution = session.getScreenResolution();
-        this.viewportSize = session.getVeiwportSize();
+        this.viewportSize = session.getViewportSize();
         this.language = session.getLanguage();
         this.userAgent = session.getUserAgent();
         this.ipAddress = session.getIpAddress();

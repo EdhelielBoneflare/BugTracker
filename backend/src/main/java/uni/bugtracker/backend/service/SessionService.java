@@ -39,7 +39,7 @@ import uni.bugtracker.backend.repository.SessionRepository;
         session.setOs(request.getOs());
         session.setDeviceType(request.getDeviceType());
         session.setScreenResolution(request.getScreenResolution());
-        session.setVeiwportSize(request.getViewportSize());
+        session.setViewportSize(request.getViewportSize());
         session.setLanguage(request.getLanguage());
         session.setUserAgent(request.getUserAgent());
         session.setIpAddress(request.getIpAddress());

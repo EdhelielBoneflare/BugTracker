@@ -31,7 +31,7 @@ public class Session {
     private String os;
     private String deviceType;
     private String screenResolution;
-    private String veiwportSize;
+    private String viewportSize;
     private String language;
     private String userAgent;
     private String ipAddress;
