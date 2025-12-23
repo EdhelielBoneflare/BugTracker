@@ -15,10 +15,14 @@ import uni.bugtracker.backend.dto.report.ReportCardDTO;
 import uni.bugtracker.backend.dto.report.ReportDashboardDTO;
 import uni.bugtracker.backend.dto.report.ReportUpdateRequestDashboard;
 import uni.bugtracker.backend.dto.report.ReportCreationRequestWidget;
+import uni.bugtracker.backend.model.Tag;
 import uni.bugtracker.backend.service.ReportService;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/reports")
@@ -96,9 +100,17 @@ public class ReportController {
     }
 
     @DeleteMapping("/delete/{id}")
-    public ResponseEntity<?> delete(@PathVariable Long id) {
+    public ResponseEntity<ReportCardDTO> delete(@PathVariable Long id) {
         ReportCardDTO deletedReport = reportService.deleteReport(id);
         return new ResponseEntity<>(deletedReport, HttpStatus.OK);
+    }
+
+    @GetMapping("/tags")
+    public ResponseEntity<List<String>> getTags() {
+        List<String> tags = Arrays.stream(Tag.values())
+                .map(Enum::name)
+                .toList();
+        return ResponseEntity.ok(tags);
     }
 
     private String getRawJson(HttpServletRequest request) {
