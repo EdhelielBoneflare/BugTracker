@@ -97,6 +97,12 @@ public class ReportService {
         return new ReportCardDTO(report);
     }
 
+    public Long getProjectIdByReportId(Long reportId) {
+        Report report = reportRepository.findById(reportId)
+                .orElseThrow(() -> new ResourceNotFoundException("Report doesn't exist"));
+        return report.getProject().getId();
+    }
+
     @Transactional
     public Page<ReportDashboardDTO> getAllReportsOfProject(Long projectId, Pageable pageable) {
         Page<Report> reportsPage = reportRepository.findAllByProjectId(projectId, pageable);

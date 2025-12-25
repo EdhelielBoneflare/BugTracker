@@ -33,7 +33,7 @@ public class SessionRequest {
     private String screenResolution;
 
     @Pattern(regexp = "^\\d+x\\d+$",
-            message = "veiwportSize invalid format (1920x947)")
+            message = "viewportSize invalid format (1920x947)")
     private String viewportSize;
 
     private String language;

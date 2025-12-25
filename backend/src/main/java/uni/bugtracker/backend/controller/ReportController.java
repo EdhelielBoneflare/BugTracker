@@ -8,6 +8,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.util.ContentCachingRequestWrapper;
 import org.springframework.web.util.WebUtils;
@@ -16,6 +17,7 @@ import uni.bugtracker.backend.dto.report.ReportDashboardDTO;
 import uni.bugtracker.backend.dto.report.ReportUpdateRequestDashboard;
 import uni.bugtracker.backend.dto.report.ReportCreationRequestWidget;
 import uni.bugtracker.backend.model.Tag;
+import uni.bugtracker.backend.security.ProjectSecurity;
 import uni.bugtracker.backend.service.ReportService;
 
 import java.nio.charset.StandardCharsets;
@@ -43,6 +45,7 @@ public class ReportController {
     }
 
     // access only developer
+    @PreAuthorize("@projectSecurity.hasAccessToProject(@reportService.getProjectIdByReportId(#id), authentication)")
     @PatchMapping("/{id}/dashboard")
     public ResponseEntity<ReportCardDTO> updateDev(
             @PathVariable Long id,
@@ -56,6 +59,8 @@ public class ReportController {
         );
     }
 
+
+    @PreAuthorize("@projectSecurity.hasAccessToProject(#projectId, authentication)")
     @GetMapping("/byProject/{projectId}")
     public ResponseEntity<Page<ReportDashboardDTO>> getAllByProject(
             @PathVariable Long projectId,
@@ -74,6 +79,8 @@ public class ReportController {
         return new ResponseEntity<>(listOfAllOnProject, responseStatus);
     }
 
+
+    @PreAuthorize("@projectSecurity.hasAccessToProject(@reportService.getProjectIdByReportId(#reportId), authentication)")
     @GetMapping("/{reportId}")
     public ResponseEntity<ReportCardDTO> getReportCard(
         @PathVariable Long reportId
@@ -81,6 +88,8 @@ public class ReportController {
         return new ResponseEntity<>(reportService.getReportCard(reportId), HttpStatus.OK);
     }
 
+
+    @PreAuthorize("@projectSecurity.hasAccessToProject(#projectId, authentication)")
     @GetMapping("/byProject/{projectId}/solved")
     public ResponseEntity<Page<ReportDashboardDTO>> getAllReportsSolved(
             @PageableDefault(
@@ -99,6 +108,8 @@ public class ReportController {
         return new ResponseEntity<>(listOfSolved, responseStatus);
     }
 
+
+    @PreAuthorize("@projectSecurity.hasAccessToProject(@reportService.getProjectId(#reportId), authentication)")
     @DeleteMapping("/delete/{id}")
     public ResponseEntity<ReportCardDTO> delete(@PathVariable Long id) {
         ReportCardDTO deletedReport = reportService.deleteReport(id);

@@ -3,6 +3,7 @@ package uni.bugtracker.backend.controller;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import uni.bugtracker.backend.dto.event.EventDetailsResponse;
 import uni.bugtracker.backend.dto.event.EventRequest;
@@ -32,6 +33,7 @@ public class EventController {
                 ));
     }
 
+    @PreAuthorize("hasAnyRole('DEVELOPER', 'PM', 'ADMIN')")
     @GetMapping("/{id}")
     public ResponseEntity<EventDetailsResponse> getEvent(
             @PathVariable Long id
@@ -39,6 +41,7 @@ public class EventController {
         return new ResponseEntity<>(eventService.getEvent(id), HttpStatus.OK);
     }
 
+    @PreAuthorize("hasAnyRole('DEVELOPER', 'PM', 'ADMIN')")
     @GetMapping("/session/{sessionId}")
     public ResponseEntity<List<EventDetailsResponse>> getEventsBySession(
             @PathVariable Long sessionId

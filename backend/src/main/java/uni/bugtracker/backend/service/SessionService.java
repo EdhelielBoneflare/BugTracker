@@ -13,9 +13,9 @@ import uni.bugtracker.backend.repository.ProjectRepository;
 import uni.bugtracker.backend.repository.SessionRepository;
 
 
-    @Service
-    @RequiredArgsConstructor
-    public class SessionService {
+@Service
+@RequiredArgsConstructor
+public class SessionService {
     private final SessionRepository sessionRepository;
     private final ProjectRepository projectRepository;
 
@@ -58,5 +58,11 @@ import uni.bugtracker.backend.repository.SessionRepository;
         Session session = sessionRepository.findById(sessionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Session not found: " + sessionId));
         return new SessionDetailsResponse(session);
+    }
+
+    public Long getProjectIdBySessionId(Long sessionId) {
+        Session session =  sessionRepository.findById(sessionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Session not found: " + sessionId));
+        return session.getProject().getId();
     }
 }
