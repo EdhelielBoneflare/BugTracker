@@ -3,6 +3,7 @@ package uni.bugtracker.backend.config;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -57,6 +58,10 @@ public class SecurityConfig {
                                 "/favicon.ico"
                         ).permitAll()
                         .requestMatchers("/auth/**").permitAll() // login, register
+                        .requestMatchers(HttpMethod.POST, "/api/sessions").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/reports/widget").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/reports/tags").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/events").permitAll()
                         .anyRequest().authenticated()
                 )
                 .authenticationProvider(authenticationProvider())
