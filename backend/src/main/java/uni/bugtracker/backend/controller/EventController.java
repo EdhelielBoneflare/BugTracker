@@ -33,16 +33,16 @@ public class EventController {
                 ));
     }
 
-    @PreAuthorize("hasAnyRole('DEVELOPER', 'PM', 'ADMIN')")
     @GetMapping("/{id}")
+    @PreAuthorize("@projectSecurity.hasAccessToProject(@eventService.getProjectIdByEventId(#id), authentication)")
     public ResponseEntity<EventDetailsResponse> getEvent(
             @PathVariable Long id
     ) {
         return new ResponseEntity<>(eventService.getEvent(id), HttpStatus.OK);
     }
 
-    @PreAuthorize("hasAnyRole('DEVELOPER', 'PM', 'ADMIN')")
     @GetMapping("/session/{sessionId}")
+    @PreAuthorize("@projectSecurity.hasAccessToProject(@sessionService.getProjectIdBySessionId(#sessionId), authentication)")
     public ResponseEntity<List<EventDetailsResponse>> getEventsBySession(
             @PathVariable Long sessionId
     ) {

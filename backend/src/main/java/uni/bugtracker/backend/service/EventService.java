@@ -71,6 +71,14 @@ public class EventService {
                 .toList();
     }
 
+    public Long getProjectIdByEventId(Long eventId) {
+        Event event =  eventRepository.findById(eventId)
+                .orElseThrow(() -> new ResourceNotFoundException("Event not found: " + eventId));
+        Long sessionId = event.getSession().getId();
+        return sessionRepository.findById(sessionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Session for this event not found")).getProject().getId();
+    }
+
     private String trim(String s, int max) {
         if (s == null) return null;
         return s.length() <= max ? s : s.substring(0, max);
