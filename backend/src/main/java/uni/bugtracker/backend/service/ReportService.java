@@ -118,8 +118,9 @@ public class ReportService {
     public ReportCardDTO deleteReport(Long id) {
         Report report = reportRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Report doesn't exist"));
+        ReportCardDTO dto = new ReportCardDTO(report);
         reportRepository.delete(report);
-        return new ReportCardDTO(report);
+        return dto;
     }
 
     private Set<String> getJsonFields(JsonNode node) {

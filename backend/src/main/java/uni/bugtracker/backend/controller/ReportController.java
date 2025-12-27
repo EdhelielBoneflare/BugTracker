@@ -109,8 +109,8 @@ public class ReportController {
     }
 
 
-    @PreAuthorize("@projectSecurity.hasAccessToProject(@reportService.getProjectId(#reportId), authentication)")
-    @DeleteMapping("/delete/{id}")
+    @PreAuthorize("@projectSecurity.hasAccessToProject(@reportService.getProjectIdByReportId(#id), authentication)")
+    @DeleteMapping("/{id}")
     public ResponseEntity<ReportCardDTO> delete(@PathVariable Long id) {
         ReportCardDTO deletedReport = reportService.deleteReport(id);
         return new ResponseEntity<>(deletedReport, HttpStatus.OK);

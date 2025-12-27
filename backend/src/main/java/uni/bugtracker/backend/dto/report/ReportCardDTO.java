@@ -5,6 +5,7 @@ import lombok.Getter;
 import uni.bugtracker.backend.model.Report;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 
 @Getter
@@ -40,7 +41,9 @@ public class ReportCardDTO {
         this.screen = report.getScreen();
         this.currentUrl = report.getCurrentUrl();
         this.userProvided = report.isUserProvided();
-        this.eventIDs = report.getRelatedEventIds();
+        this.eventIDs = report.getRelatedEventIds() == null
+                ? List.of()
+                : new ArrayList<>(report.getRelatedEventIds());
         this.level = report.getCriticality() != null
                 ? report.getCriticality().name()
                 : null;
