@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -17,6 +18,7 @@ import uni.bugtracker.backend.exception.ResourceNotFoundException;
 import uni.bugtracker.backend.model.*;
 import uni.bugtracker.backend.repository.*;
 import uni.bugtracker.backend.utility.ReportMapper;
+import uni.bugtracker.backend.utility.ai_criticality.ReportCreatedEvent;
 
 import java.util.*;
 
@@ -29,6 +31,7 @@ public class ReportService {
     private final DeveloperRepository developerRepository;
     private final EventRepository eventRepository;
     private final ReportMapper mapper;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public Long createReport(ReportCreationRequestWidget request) {
@@ -44,7 +47,11 @@ public class ReportService {
                         .map(Event::getTimestamp)
                         .orElse(null)
         );
-        return reportRepository.save(report).getId();
+        report.setCriticality(CriticalityLevel.UNKNOWN);
+        reportRepository.save(report);
+
+        eventPublisher.publishEvent(new ReportCreatedEvent(report.getId()));
+        return report.getId();
     }
 
 

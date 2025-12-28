@@ -2,16 +2,15 @@ package uni.bugtracker.backend.service;
 
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import uni.bugtracker.backend.config.SessionProperties;
-import uni.bugtracker.backend.model.Event;
-import uni.bugtracker.backend.model.EventType;
-import uni.bugtracker.backend.model.Report;
-import uni.bugtracker.backend.model.Session;
+import uni.bugtracker.backend.model.*;
 import uni.bugtracker.backend.repository.EventRepository;
 import uni.bugtracker.backend.repository.ReportRepository;
 import uni.bugtracker.backend.repository.SessionRepository;
+import uni.bugtracker.backend.utility.ai_criticality.ReportCreatedEvent;
 
 import java.time.Instant;
 import java.util.List;
@@ -23,6 +22,7 @@ public class SessionAutoGenerationReportJob {
     private final EventRepository eventRepository;
     private final ReportRepository reportRepository;
     private final SessionProperties sessionProperties;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Scheduled(fixedDelayString = "#{@sessionProperties.checkInterval.toMillis()}")
     @Transactional
@@ -57,10 +57,16 @@ public class SessionAutoGenerationReportJob {
         report.setSession(session);
         report.setReportedAt(Instant.now());
         report.setUserProvided(false);
+        report.setCriticality(CriticalityLevel.UNKNOWN);
 
         List<Event> events = eventRepository.findAllBySessionId(session.getId());
         attachEvents(report, events);
+
         reportRepository.save(report);
+
+        eventPublisher.publishEvent(
+                new ReportCreatedEvent(report.getId())
+        );
     }
 
     private void closeSession(Session session) {

@@ -79,8 +79,8 @@ public class Report {
     private Developer developer;
 
     @Enumerated(EnumType.STRING)
-//    @NotNull // connect DeepSeek API
-    private CriticalityLevel criticality;
+    @NotNull // connect OpenRouter API
+    private CriticalityLevel criticality = CriticalityLevel.UNKNOWN;
 
     @Enumerated(EnumType.STRING)
     @NotNull

@@ -4,5 +4,6 @@ public enum CriticalityLevel {
     LOW,
     MEDIUM,
     HIGH,
-    CRITICAL
+    CRITICAL,
+    UNKNOWN
 }

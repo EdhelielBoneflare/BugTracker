@@ -21,6 +21,8 @@ session:
   live-timeout: 1m
   check-interval: 10s
 
+openrouter.api.key: ${OPENAI_KEY}
+
 springdoc:
   api-docs:
     path: /v3/api-docs
