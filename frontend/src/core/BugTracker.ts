@@ -8,7 +8,6 @@ import { UserActionTracker } from './UserActionTracker';
 import { WidgetButton } from '../ui/WidgetButton';
 import { Client } from '../api/Client';
 import { DEFAULT_FLUSH_INTERVAL, DEFAULT_MAX_BUFFER_SIZE } from '../constants/defaults';
-import { generateShortId } from '../utils/uuid';
 
 export class BugTracker {
     private config: BugTrackerConfig;
@@ -282,60 +281,30 @@ export class BugTracker {
     }
 
     /**
-     * Add event to buffer with beforeSend hook
+     * Add event to buffer
      */
     private addEvent(event: InternalEvent): void {
-        // Ensure every event has a client-generated id to correlate with backend logs
-        if (!event.eventId) {
-            event.eventId = generateShortId();
-        }
-
-        // Attach event id into customMetadata so clients/hooks/preview can see it too
-        event.customMetadata = {
-            ...(event.customMetadata || {}),
-            eventLogId: event.eventId
+        const apiEvent = {
+            type: event.type,
+            name: event.name,
+            message: event.message,
+            stackTrace: event.stackTrace,
+            timestamp: event.timestamp,
+            url: event.url,
+            metadata: {
+                lineNumber: event.lineNumber,
+                columnNumber: event.columnNumber,
+                fileName: event.fileName,
+                tagName: event.tagName,
+                xPath: event.xPath,
+                networkUrl: event.networkUrl,
+                statusCode: event.statusCode,
+                duration: event.duration,
+                ...event.customMetadata
+            }
         };
 
-        // Apply beforeSend hook if provided
-        if (this.config.beforeSend) {
-            // Convert to API format for beforeSend
-            const apiEvent = {
-                type: event.type,
-                name: event.name,
-                message: event.message,
-                stackTrace: event.stackTrace,
-                timestamp: event.timestamp,
-                url: event.url,
-                metadata: {
-                    lineNumber: event.lineNumber,
-                    columnNumber: event.columnNumber,
-                    fileName: event.fileName,
-                    tagName: event.tagName,
-                    xPath: event.xPath,
-                    networkUrl: event.networkUrl,
-                    statusCode: event.statusCode,
-                    duration: event.duration,
-                    ...event.customMetadata
-                }
-            };
-
-            const processed = this.config.beforeSend(apiEvent);
-            if (!processed) return; // Filtered out
-
-            // Update event with processed data
-            event = {
-                ...event,
-                name: processed.name,
-                message: processed.message,
-                stackTrace: processed.stackTrace,
-                customMetadata: {
-                    ...event.customMetadata,
-                    ...processed.metadata
-                }
-            };
-        }
-
-        this.eventBuffer.add(event);
+        this.eventBuffer.add(apiEvent);
     }
 
     /**
