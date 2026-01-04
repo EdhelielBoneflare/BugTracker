@@ -11,7 +11,7 @@ import java.util.List;
 @Data
 public class ReportCreationRequestWidget {
     @NotNull
-    @Positive
+    @NotBlank
     private String projectId;
 
     @NotNull
@@ -35,7 +35,7 @@ public class ReportCreationRequestWidget {
     @Email
     private String userEmail;
 
-    @NotBlank
+    // Screenshot may be omitted if user denies consent; make field optional
     private String screen;
 
     @NotBlank
@@ -45,5 +45,3 @@ public class ReportCreationRequestWidget {
     private Boolean userProvided;
 
 }
-
-

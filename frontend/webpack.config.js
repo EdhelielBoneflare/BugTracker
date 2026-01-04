@@ -23,5 +23,9 @@ module.exports = {
             }
         ]
     },
-    mode: 'production'
+    mode: 'production',
+    optimization: {
+        splitChunks: false,
+        runtimeChunk: false
+    }
 };

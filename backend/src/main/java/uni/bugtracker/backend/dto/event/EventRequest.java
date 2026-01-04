@@ -21,7 +21,6 @@ public class EventRequest {
     @NotBlank
     private String name;
 
-    @NotBlank
     private String log;
 
     private String stackTrace;
