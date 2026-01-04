@@ -7,5 +7,5 @@ import lombok.Data;
 @AllArgsConstructor
 public class ProjectCreationUpdatingResponse {
     private String message;
-    private Long projectId;
+    private String projectId;
 }

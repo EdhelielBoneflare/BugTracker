@@ -11,8 +11,8 @@ import java.util.List;
 @Data
 public class SessionRequest {
     @NotNull
-    @Positive(message = "ProjectId must be positive number")
-    private Long projectId;
+    @NotBlank
+    private String projectId;
 
     @NotNull
     @PastOrPresent(message = "Session startTime cannot be in the future")

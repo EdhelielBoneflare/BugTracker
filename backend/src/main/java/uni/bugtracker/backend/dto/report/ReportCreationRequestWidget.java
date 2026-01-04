@@ -12,7 +12,7 @@ import java.util.List;
 public class ReportCreationRequestWidget {
     @NotNull
     @Positive
-    private Long projectId;
+    private String projectId;
 
     @NotNull
     @Positive

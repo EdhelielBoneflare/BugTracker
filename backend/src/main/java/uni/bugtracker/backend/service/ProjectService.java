@@ -43,7 +43,7 @@ public class ProjectService {
         return developerRepository.findProjectsByDeveloperId(user.getId());
     }
 
-    public Project updateProject(Long projectId, ProjectRequestBody projectBody) {
+    public Project updateProject(String projectId, ProjectRequestBody projectBody) {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new ResourceNotFoundException("Project not found with id:" + projectId));
         if (projectBody.getProjectName() != null)
@@ -51,7 +51,7 @@ public class ProjectService {
         return projectRepository.save(project);
     }
 
-    public Project deleteProject(Long projectId) {
+    public Project deleteProject(String projectId) {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new ResourceNotFoundException("Project not found with id:" + projectId));
         projectRepository.deleteById(projectId);

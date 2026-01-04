@@ -1,8 +1,8 @@
 package uni.bugtracker.backend.controller;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -29,8 +29,8 @@ public class ProjectController {
     @PatchMapping("/users/{userId}/projects/assign/{projectId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'PM')")
     public ResponseEntity<UserDTO> assignProject(
-            @PathVariable @NotNull @Positive Long userId,
-            @PathVariable @NotNull @Positive Long projectId,
+            @PathVariable @NotNull @NotBlank String userId,
+            @PathVariable @NotNull @NotBlank String projectId,
             Authentication auth
     ) {
         return ResponseEntity.ok(userService.assignProject(userId, projectId, auth));
@@ -39,8 +39,8 @@ public class ProjectController {
     @PatchMapping("/users/{userId}/projects/remove/{projectId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'PM')")
     public ResponseEntity<UserDTO> removeProject(
-            @PathVariable @NotNull @Positive Long userId,
-            @PathVariable @NotNull @Positive Long projectId,
+            @PathVariable @NotNull @NotBlank String userId,
+            @PathVariable @NotNull @NotBlank String projectId,
             Authentication auth
     ) {
         return ResponseEntity.ok(
@@ -87,7 +87,7 @@ public class ProjectController {
     @PatchMapping("/projects/{projectId}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ProjectCreationUpdatingResponse> updateProject(
-            @PathVariable @NotNull @Positive Long projectId,
+            @PathVariable @NotNull @NotBlank String projectId,
             @RequestBody @Valid ProjectRequestBody request
     ) {
         Project project = projectService.updateProject(projectId, request);
@@ -100,7 +100,7 @@ public class ProjectController {
     @DeleteMapping("/projects/{projectId}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Project> deleteProject(
-            @PathVariable @NotNull @Positive Long projectId
+            @PathVariable @NotNull @NotBlank String projectId
     ) {
         return ResponseEntity.ok(projectService.deleteProject(projectId));
     }

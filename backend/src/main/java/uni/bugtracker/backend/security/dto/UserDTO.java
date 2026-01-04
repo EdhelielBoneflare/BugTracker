@@ -11,10 +11,10 @@ import java.util.stream.Collectors;
 
 @Getter
 public class UserDTO {
-    private Long id;
+    private String id;
     private String username;
     private Role role;
-    private Set<Long> projectIds;
+    private Set<String> projectIds;
 
     public UserDTO (Developer user) {
         this.id = user.getId();

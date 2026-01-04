@@ -27,7 +27,7 @@ public class UserService {
     private final ProjectRepository projectRepository;
     private final ProjectSecurity projectSecurity;
 
-    public UserDTO changeUserRole(Long userId, Role newRole) {
+    public UserDTO changeUserRole(String userId, Role newRole) {
         Developer user = developerRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User nor found with id: " + userId));
         user.setRole(newRole);
@@ -47,8 +47,8 @@ public class UserService {
 
     @Transactional
     public UserDTO assignProject(
-            Long targetUserId,
-            Long projectId,
+            String targetUserId,
+            String projectId,
             Authentication authentication
     ) {
         CustomUserDetails currentUser = (CustomUserDetails) authentication.getPrincipal();
@@ -68,8 +68,8 @@ public class UserService {
 
     @Transactional
     public UserDTO removeProject(
-            Long targetUserId,
-            Long projectId,
+            String targetUserId,
+            String projectId,
             Authentication authentication
     ) {
         CustomUserDetails currentUser = (CustomUserDetails) authentication.getPrincipal();
@@ -97,7 +97,7 @@ public class UserService {
 
     private void checkPermission(
             CustomUserDetails currentUser,
-            Long projectId,
+            String projectId,
             Authentication authentication
     ) {
         if (currentUser.getRole() == Role.ADMIN) {

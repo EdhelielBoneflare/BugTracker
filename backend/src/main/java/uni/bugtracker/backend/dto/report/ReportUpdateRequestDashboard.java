@@ -3,7 +3,8 @@ package uni.bugtracker.backend.dto.report;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.annotation.Nullable;
-import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 import uni.bugtracker.backend.model.CriticalityLevel;
@@ -18,8 +19,9 @@ import java.util.List;
 @Data
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class ReportUpdateRequestDashboard {
-    @Positive
-    private Long projectId;
+    @NotNull
+    @NotBlank
+    private String projectId;
 
     @Nullable
     @Schema(nullable = true, description = "Nullable title - null clears the field")

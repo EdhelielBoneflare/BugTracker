@@ -71,7 +71,7 @@ public class EventService {
                 .toList();
     }
 
-    public Long getProjectIdByEventId(Long eventId) {
+    public String getProjectIdByEventId(Long eventId) {
         Event event =  eventRepository.findById(eventId)
                 .orElseThrow(() -> new ResourceNotFoundException("Event not found: " + eventId));
         Long sessionId = event.getSession().getId();

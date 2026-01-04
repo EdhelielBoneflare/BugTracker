@@ -38,7 +38,7 @@ public class AdminUserController {
 
     @PatchMapping("/users/{userId}/role")
     public ResponseEntity<UserDTO> changeRole(
-            @PathVariable Long userId,
+            @PathVariable String userId,
             @RequestParam Role role
     ) {
         return ResponseEntity.ok(userService.changeUserRole(userId, role));

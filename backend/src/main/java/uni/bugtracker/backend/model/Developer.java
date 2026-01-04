@@ -19,8 +19,8 @@ import java.util.Set;
 @AllArgsConstructor
 public class Developer {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private String id;
 
     @Column(unique = true, nullable = false)
     @Size(max = 255)

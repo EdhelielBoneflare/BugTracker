@@ -12,7 +12,7 @@ public class ProjectSecurity {
 
     private final DeveloperRepository developerRepository;
 
-    public boolean hasAccessToProject(Long projectId, Authentication auth) {
+    public boolean hasAccessToProject(String projectId, Authentication auth) {
         CustomUserDetails user = (CustomUserDetails) auth.getPrincipal();
 
         if (user.getRole() == Role.ADMIN) {

@@ -10,7 +10,7 @@ import java.util.List;
 @Getter
 public class ReportDashboardDTO {
     private Long id;
-    private Long projectId;
+    private String projectId;
     private String title;
     private List<String> tags;
     private Instant reportedAt;

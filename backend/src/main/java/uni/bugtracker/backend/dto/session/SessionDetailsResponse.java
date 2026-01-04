@@ -9,7 +9,7 @@ import java.util.List;
 @Data
 public class SessionDetailsResponse {
     private Long sessionId;
-    private Long projectId;
+    private String projectId;
     private Boolean isActive;
     private Instant startTime;
     private Instant endTime;

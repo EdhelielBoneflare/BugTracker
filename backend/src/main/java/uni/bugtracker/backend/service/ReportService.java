@@ -104,7 +104,7 @@ public class ReportService {
         return new ReportCardDTO(report);
     }
 
-    public Long getProjectIdByReportId(Long reportId) {
+    public String getProjectIdByReportId(Long reportId) {
         Report report = reportRepository.findById(reportId)
                 .orElseThrow(() -> new ResourceNotFoundException("Report doesn't exist"));
         return report.getProject().getId();

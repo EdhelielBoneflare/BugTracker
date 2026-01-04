@@ -12,12 +12,12 @@ import uni.bugtracker.backend.model.Project;
 import java.util.List;
 import java.util.Optional;
 
-public interface DeveloperRepository extends JpaRepository<Developer, Long> {
+public interface DeveloperRepository extends JpaRepository<Developer, String> {
     Optional<Developer> findByUsername(String username);
 
     boolean existsByUsername(String username);
 
-    boolean existsByIdAndProjects_Id(Long devId, Long projectId);
+    boolean existsByIdAndProjects_Id(String devId, String projectId);
 
     Page<Developer> findAll(Pageable pageable);
 
@@ -27,5 +27,5 @@ public interface DeveloperRepository extends JpaRepository<Developer, Long> {
         join d.projects p
         where d.id = :developerId
     """)
-    List<Project> findProjectsByDeveloperId(@Param("developerId") Long developerId);
+    List<Project> findProjectsByDeveloperId(@Param("developerId") String developerId);
 }

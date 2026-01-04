@@ -60,7 +60,7 @@ public class SessionService {
         return new SessionDetailsResponse(session);
     }
 
-    public Long getProjectIdBySessionId(Long sessionId) {
+    public String getProjectIdBySessionId(Long sessionId) {
         Session session =  sessionRepository.findById(sessionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Session not found: " + sessionId));
         return session.getProject().getId();

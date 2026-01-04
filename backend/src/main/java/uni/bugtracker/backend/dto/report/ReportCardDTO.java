@@ -11,7 +11,7 @@ import java.util.List;
 @Getter
 public class ReportCardDTO {
     private Long id;
-    private Long projectId;
+    private String projectId;
     private Long sessionId;
     private String title;
     private List<String> tags;
