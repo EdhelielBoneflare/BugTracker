@@ -40,6 +40,8 @@ const ProjectReportsPage: React.FC = () => {
         status: ReportStatus.NEW,
         criticality: CriticalityLevel.UNKNOWN,
         comments: '',
+        projectId: '', // Добавляем
+        developerName: '', // Добавляем
     });
 
     // Функция проверки прав - только админ может редактировать/удалять
@@ -61,7 +63,8 @@ const ProjectReportsPage: React.FC = () => {
             let filteredReports = response.content.map((report: any) => ({
                 ...report,
                 criticality: report.level || CriticalityLevel.UNKNOWN,
-                comments: report.comments || ''
+                comments: report.comments || '',
+                developerName: report.developerName || null,
             }));
 
             // Фильтрация на клиенте
@@ -149,6 +152,8 @@ const ProjectReportsPage: React.FC = () => {
             status: report.status,
             criticality: report.criticality || CriticalityLevel.UNKNOWN,
             comments: report.comments || '',
+            projectId: report.projectId || '', // Добавляем
+            developerName: report.developerName || '', // Добавляем
         });
         setOpenEditDialog(true);
     };
@@ -161,6 +166,8 @@ const ProjectReportsPage: React.FC = () => {
                 status: editData.status,
                 criticality: editData.criticality,
                 comments: editData.comments,
+                projectId: editData.projectId || undefined, // Добавляем
+                developerName: editData.developerName || undefined, // Добавляем
             });
             setOpenEditDialog(false);
             setEditingReport(null);

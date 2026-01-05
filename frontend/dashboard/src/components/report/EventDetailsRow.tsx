@@ -33,6 +33,7 @@ const EventDetailsRow: React.FC<EventDetailsRowProps> = ({ event }) => {
 
     const eventData = {
         id: event.id,
+        eventId: event.eventId,
         type: event.type,
         name: event.name,
         timestamp: event.timestamp,
@@ -55,6 +56,7 @@ const EventDetailsRow: React.FC<EventDetailsRowProps> = ({ event }) => {
     const hasElement = Boolean(eventData.element && eventData.element.trim() !== '');
     const hasUrl = Boolean(eventData.url && eventData.url.trim() !== '');
     const hasMetadata = Boolean((event as any).metadata && Object.keys((event as any).metadata).length > 0);
+    const hasEventId = Boolean(eventData.eventId);
 
     console.log('Has log content:', hasLogContent, eventData.log);
     console.log('Has stack trace:', hasStackTraceContent, eventData.stackTrace);
@@ -85,7 +87,8 @@ const EventDetailsRow: React.FC<EventDetailsRowProps> = ({ event }) => {
         hasStatusCode ||
         hasElement ||
         hasUrl ||
-        hasMetadata;
+        hasMetadata ||
+        hasEventId;
 
     const renderContent = (content: string, isStackTrace: boolean = false) => {
         if (!content || content.trim() === '') return null;
@@ -152,13 +155,24 @@ const EventDetailsRow: React.FC<EventDetailsRowProps> = ({ event }) => {
                                         Detailed Event Information
                                     </Typography>
 
-                                    {(hasElement || hasFileName || hasLineNumber || hasStatusCode || hasUrl) && (
+                                    {(hasElement || hasFileName || hasLineNumber || hasStatusCode || hasUrl || hasEventId) && (
                                         <Box sx={{
                                             display: 'grid',
                                             gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr 1fr' },
                                             gap: 2,
                                             mb: 3
                                         }}>
+                                            {hasEventId && (
+                                                <Box>
+                                                    <Typography variant="caption" color="text.secondary" display="block">
+                                                        Event ID
+                                                    </Typography>
+                                                    <Typography variant="body2" sx={{ fontFamily: 'monospace', fontWeight: 'bold' }}>
+                                                        #{eventData.eventId}
+                                                    </Typography>
+                                                </Box>
+                                            )}
+
                                             {hasElement && (
                                                 <Box>
                                                     <Typography variant="caption" color="text.secondary" display="block">

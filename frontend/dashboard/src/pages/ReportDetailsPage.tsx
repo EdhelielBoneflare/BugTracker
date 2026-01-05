@@ -28,6 +28,8 @@ const ReportDetailsPage: React.FC = () => {
         status: ReportStatus.NEW,
         criticality: CriticalityLevel.UNKNOWN,
         comments: '',
+        projectId: '', // Добавлено
+        developerName: '', // Добавлено
     });
 
     const canEditReport = () => {
@@ -58,14 +60,15 @@ const ReportDetailsPage: React.FC = () => {
             const processedReport = {
                 ...reportData,
                 criticality: normalizeCriticality(reportData),
-                developerId: reportData.developerId || null,
+                developerName: reportData.developerName || (reportData as any)?.developerName || null,
                 status: reportData.status || ReportStatus.NEW,
                 comments: reportData.comments || '',
                 userEmail: reportData.userEmail || (reportData as any)?.userEmail || null,
                 userProvided: Boolean(reportData.userProvided || (reportData as any)?.userProvided || false),
                 sessionId: reportData.sessionId || (reportData as any)?.sessionId || null,
                 currentUrl: reportData.currentUrl || (reportData as any)?.currentUrl || '',
-                screen: reportData.screen || (reportData as any)?.screen || ''
+                screen: reportData.screen || (reportData as any)?.screen || '',
+                tags: reportData.tags || (reportData as any)?.tags || [],
             };
 
             console.log('📊 Report data:', processedReport);
@@ -76,17 +79,33 @@ const ReportDetailsPage: React.FC = () => {
                 status: processedReport.status,
                 criticality: normalizeCriticality(processedReport),
                 comments: processedReport.comments,
+                projectId: processedReport.projectId || '', // Добавлено
+                developerName: processedReport.developerName || '', // Добавлено
             });
 
             if (processedReport.sessionId) {
                 try {
                     const sessionData = await api.getSession(processedReport.sessionId.toString());
-                    setSession(sessionData);
+
+                    const sessionPlugins = (sessionData as any).plugins;
+                    let plugins: string[] = [];
+
+                    if (sessionPlugins) {
+                        plugins = sessionPlugins.filter((p: any) => typeof p === 'string' && p.trim() !== '');
+                    }
+
+                    const processedSession = {
+                        ...sessionData,
+                        plugins: plugins
+                    };
+
+                    setSession(processedSession as Session);
 
                     const eventsData = await api.getSessionEvents(processedReport.sessionId.toString());
 
                     const processedEvents = eventsData.map((event: any) => ({
                         ...event,
+                        eventId: event.eventId || event.id,
                         fileName: event.fileName || event.metadata?.fileName || '',
                         lineNumber: event.lineNumber || event.metadata?.lineNumber || '',
                         statusCode: event.statusCode || event.metadata?.statusCode || '',
@@ -149,6 +168,8 @@ const ReportDetailsPage: React.FC = () => {
                 status: editData.status,
                 criticality: editData.criticality,
                 comments: editData.comments,
+                projectId: editData.projectId || undefined, // Добавлено
+                developerName: editData.developerName || undefined, // Добавлено
             });
 
             const processedReport = {
@@ -170,6 +191,8 @@ const ReportDetailsPage: React.FC = () => {
             status: report.status || ReportStatus.NEW,
             criticality: normalizeCriticality(report),
             comments: report.comments || '',
+            projectId: report.projectId || '', // Добавлено
+            developerName: report.developerName || '', // Добавлено
         });
         setEditing(false);
     };

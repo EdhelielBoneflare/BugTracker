@@ -179,7 +179,8 @@ class ApiClient {
         status?: string;
         criticality?: string;
         comments?: string;
-        developerId?: string;
+        projectId?: string;
+        developerName?: string;
     }): Promise<Report> {
         return this.request(`/api/reports/${reportId}/dashboard`, {
             method: 'PATCH',
