@@ -215,29 +215,28 @@ export class SessionManager {
     }
 
     public endSession(): void {
-        // Remove persisted session entirely so initialize() creates a fresh one instead of resuming
-        try {
-            this.storage.remove('bt_session');
-        } catch (e) {
-            // best-effort; ignore
+        const session = this.storage.get('bt_session') as
+            { id: number; lastActivity: number; data: SessionData } | null;
+
+        if (session) {
+            // Update the data inside session
+            session.data.active = false;
+
+            // Also add ended flag and endTime to the session object itself
+            (session as any).ended = true;
+            (session as any).endTime = Date.now();
+
+            this.storage.set('bt_session', session);
         }
 
-        // Reset in-memory session state
         this.sessionId = 0;
         this.sessionData = null;
-
-        // Clear in-memory and persisted server id as session ended
+        // Clear in-memory server id as session ended
         this.serverSessionId = null;
         try {
             localStorage.removeItem(SERVER_SESSION_KEY);
         } catch (e) {
             // ignore
-        }
-
-        // Stop cleanup timer if present
-        if (this.cleanupTimer) {
-            clearInterval(this.cleanupTimer);
-            this.cleanupTimer = null;
         }
     }
 

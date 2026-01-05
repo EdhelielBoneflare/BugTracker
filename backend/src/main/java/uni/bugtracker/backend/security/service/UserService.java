@@ -34,16 +34,12 @@ public class UserService {
         return new UserDTO(developerRepository.save(user));
     }
 
-    public UserDTO getUserByUsername(String username) {
-        Developer user = developerRepository.findByUsername(username)
-                .orElseThrow(() -> new ResourceNotFoundException("User nor found with username: " + username));
-        return new UserDTO(developerRepository.save(user));
-    }
-
     public Page<UserDTO> getAllUsers(Pageable pageable) {
         Page<Developer> usersPage = developerRepository.findAll(pageable);
         return usersPage.map(UserDTO::new);
     }
+
+
 
     @Transactional
     public UserDTO assignProject(

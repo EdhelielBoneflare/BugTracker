@@ -179,7 +179,7 @@ class ReportMapperTest {
         Project project = new Project();
         project.setId(1L);
         Developer developer = new Developer();
-        developer.setId(1);
+        developer.setId(1L);
         developer.setUsername("dev1");
 
         // When: Only update title and comments
@@ -216,7 +216,7 @@ class ReportMapperTest {
         Project project = new Project();
         project.setId(1L);
         Developer developer = new Developer();
-        developer.setId(1);
+        developer.setId(1L);
         developer.setUsername("dev1");
 
         // When: Update all fields

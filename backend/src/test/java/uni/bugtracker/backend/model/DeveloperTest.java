@@ -7,6 +7,9 @@ import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
 
+import java.util.HashSet;
+import java.util.Set;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 class DeveloperTest {
@@ -27,7 +30,10 @@ class DeveloperTest {
         developer = new Developer();
         developer.setUsername("testdeveloper");
         developer.setPassword("securePassword123");
-        developer.setProject(project);
+
+        Set<Project> projects = new HashSet<>();
+        projects.add(project);
+        developer.setProjects(projects);
     }
 
     @Test
@@ -42,7 +48,7 @@ class DeveloperTest {
     @Test
     void createDeveloper_WithUsernameTooLong_ShouldBeInvalid() {
         // Arrange
-        developer.setUsername("a".repeat(256)); // More than limit (255 symbols)
+        developer.setUsername("a".repeat(256));
 
         // Act
         var violations = validator.validate(developer);
@@ -68,9 +74,9 @@ class DeveloperTest {
     }
 
     @Test
-    void createDeveloper_WithNullProject_ShouldBeValid() {
+    void createDeveloper_WithNullProjects_ShouldBeValid() {
         // Arrange
-        developer.setProject(null);
+        developer.setProjects(null);
 
         // Act
         var violations = validator.validate(developer);
@@ -82,7 +88,7 @@ class DeveloperTest {
     @Test
     void createDeveloper_SetAndGetId_ShouldWork() {
         // Arrange
-        Integer expectedId = 42;
+        Long expectedId = 42L;
 
         // Act
         developer.setId(expectedId);

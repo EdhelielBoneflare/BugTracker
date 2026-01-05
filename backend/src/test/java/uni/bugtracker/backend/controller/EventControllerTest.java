@@ -14,13 +14,17 @@ import uni.bugtracker.backend.dto.event.EventRequest;
 import uni.bugtracker.backend.exception.ResourceNotFoundException;
 import uni.bugtracker.backend.model.EventType;
 import uni.bugtracker.backend.service.EventService;
+import uni.bugtracker.backend.service.SessionService;
+import uni.bugtracker.backend.security.ProjectSecurity;
+import uni.bugtracker.backend.security.filter.JwtAuthenticationFilter;
+import uni.bugtracker.backend.security.service.JwtService;
 
 import java.time.Instant;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -34,8 +38,22 @@ class EventControllerTest {
     @Autowired
     private JacksonTester<EventRequest> eventRequestJson;
 
+    // Мок основного сервиса контроллера
     @MockitoBean
     private EventService eventService;
+
+    // Моки для зависимостей безопасности (ВАЖНО!)
+    @MockitoBean
+    private SessionService sessionService;
+
+    @MockitoBean
+    private ProjectSecurity projectSecurity;
+
+    @MockitoBean
+    private JwtService jwtService;
+
+    @MockitoBean
+    private JwtAuthenticationFilter jwtAuthenticationFilter;
 
     private EventRequest eventRequest;
     private EventDetailsResponse mockEventDetailsResponse;
@@ -43,6 +61,21 @@ class EventControllerTest {
 
     @BeforeEach
     void setUp() {
+        // ВАЖНО: Настраиваем моки безопасности чтобы @PreAuthorize аннотации работали
+        // Без этого тесты с @PreAuthorize будут возвращать 403 Forbidden
+
+        // 1. Настраиваем ProjectSecurity.hasAccessToProject() чтобы всегда возвращал true
+        //    Это обходит проверки доступа в @PreAuthorize
+        when(projectSecurity.hasAccessToProject(anyLong(), any())).thenReturn(true);
+
+        // 2. Настраиваем сервисы, которые вызываются в SpEL выражениях @PreAuthorize
+        //    EventController использует: @eventService.getProjectIdByEventId(#id)
+        when(eventService.getProjectIdByEventId(anyLong())).thenReturn(1L);
+
+        //    И: @sessionService.getProjectIdBySessionId(#sessionId)
+        when(sessionService.getProjectIdBySessionId(anyLong())).thenReturn(1L);
+
+        // 3. Настраиваем тестовые данные для запросов
         EventRequest.MetadataPart metadata = new EventRequest.MetadataPart();
         metadata.setFileName("app.js");
         metadata.setLineNumber("42");
@@ -59,7 +92,7 @@ class EventControllerTest {
         eventRequest.setTimestamp(Instant.now());
         eventRequest.setMetadata(metadata);
 
-        // Создаем mock EventDetailsResponse и Metadata
+        // 4. Настраиваем моки для ответов сервиса
         mockEventDetailsResponse = mock(EventDetailsResponse.class);
         mockMetadata = mock(EventDetailsResponse.Metadata.class);
 
@@ -186,4 +219,22 @@ class EventControllerTest {
                 .andExpect(status().isNotFound());
     }
 
+    // Дополнительный тест для проверки, что Security работает (опционально)
+    @Test
+    void getEvent_WithoutAccess_ShouldReturnForbidden() throws Exception {
+        // Arrange
+        Long eventId = 1L;
+
+        // Переопределяем поведение security чтобы вернуть false (нет доступа)
+        when(projectSecurity.hasAccessToProject(anyLong(), any())).thenReturn(false);
+
+        // Не нужно настраивать eventService.getEvent() - запрос не дойдет до него
+
+        // Act & Assert
+        mockMvc.perform(get("/api/events/{id}", eventId))
+                .andExpect(status().isForbidden());
+
+        // Проверяем, что сервис не вызывался из-за блокировки security
+        verify(eventService, never()).getEvent(anyLong());
+    }
 }

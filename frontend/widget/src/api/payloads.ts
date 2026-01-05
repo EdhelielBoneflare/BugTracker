@@ -89,7 +89,7 @@ export class PayloadBuilder {
 
     // New: build EventRequest DTO shape expected by backend (uses numeric projectId/sessionId)
     static buildEventRequest(
-        projectId: String,
+        projectId: number,
         sessionId: number,
         event: InternalEvent,
         sessionData: SessionData
@@ -113,7 +113,7 @@ export class PayloadBuilder {
 
     // New: build ReportCreationRequestWidget
     static buildReportWidgetRequest(
-        projectId: String,
+        projectId: number,
         sessionId: number,
         data: {
             screenshot: string;
@@ -138,7 +138,7 @@ export class PayloadBuilder {
     }
 
     // New: build SessionRequest for backend
-    static buildSessionRequest(projectId: String, sessionData: SessionData) {
+    static buildSessionRequest(projectId: number, sessionData: SessionData) {
         return {
             projectId: projectId,
             startTime: new Date(sessionData.startTime ?? Date.now()).toISOString(),

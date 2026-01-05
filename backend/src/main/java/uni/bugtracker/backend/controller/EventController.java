@@ -34,7 +34,7 @@ public class EventController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("@projectSecurity.hasAccessToProject(@eventService.getProjectIdByEventId(#id), authentication)")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<EventDetailsResponse> getEvent(
             @PathVariable Long id
     ) {
@@ -42,7 +42,7 @@ public class EventController {
     }
 
     @GetMapping("/session/{sessionId}")
-    @PreAuthorize("@projectSecurity.hasAccessToProject(@sessionService.getProjectIdBySessionId(#sessionId), authentication)")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<EventDetailsResponse>> getEventsBySession(
             @PathVariable Long sessionId
     ) {

@@ -332,7 +332,7 @@ class ReportTest {
     void createReport_WithDeveloper_ShouldStoreDeveloper() {
         // Arrange
         Developer dev = new Developer();
-        dev.setId(1);
+        dev.setId(1L);
         dev.setUsername("dev1");
         dev.setPassword("pass");
         report.setDeveloper(dev);
