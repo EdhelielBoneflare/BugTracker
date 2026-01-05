@@ -24,3 +24,12 @@ hs_err_pid*
 replay_pid*
 /frontend/.idea/
 /backend/.idea/
+
+.idea/
+*.iml
+*.ipr
+*.iws
+
+/frontend/dashboard/node_modules
+
+.env
