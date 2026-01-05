@@ -28,7 +28,8 @@ public class SessionController {
                 HttpStatus.CREATED);
     }
 
-    @PreAuthorize("isAuthenticated()")
+//    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("@projectSecurity.hasAccessToProject(@sessionService.getProjectIdBySessionId(#id), authentication)")
     @GetMapping("/{id}")
     public ResponseEntity<SessionDetailsResponse> getSession(
             @PathVariable Long id

@@ -44,7 +44,8 @@ public class ReportController {
                 HttpStatus.CREATED);
     }
 
-    @PreAuthorize("isAuthenticated()")
+//    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("@projectSecurity.hasAccessToProject(@reportService.getProjectIdByReportId(#id), authentication)")
     @PatchMapping("/{id}/dashboard")
     public ResponseEntity<ReportCardDTO> updateDev(
             @PathVariable Long id,
@@ -62,7 +63,7 @@ public class ReportController {
     @PreAuthorize("@projectSecurity.hasAccessToProject(#projectId, authentication)")
     @GetMapping("/byProject/{projectId}")
     public ResponseEntity<Page<ReportDashboardDTO>> getAllByProject(
-            @PathVariable Long projectId,
+            @PathVariable String projectId,
             @PageableDefault(
                     page = 0,
                     size = 30,
@@ -97,7 +98,7 @@ public class ReportController {
                     sort = "reportedAt",
                     direction = Sort.Direction.DESC
             ) Pageable pageable,
-            @PathVariable Long projectId
+            @PathVariable String projectId
     ) {
         HttpStatus responseStatus = HttpStatus.OK;
         Page<ReportDashboardDTO> listOfSolved = reportService.getAllReportsSolvedOnProject(projectId, pageable);

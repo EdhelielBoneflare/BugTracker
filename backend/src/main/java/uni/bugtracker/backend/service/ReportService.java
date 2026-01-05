@@ -111,12 +111,12 @@ public class ReportService {
     }
 
     @Transactional
-    public Page<ReportDashboardDTO> getAllReportsOfProject(Long projectId, Pageable pageable) {
+    public Page<ReportDashboardDTO> getAllReportsOfProject(String projectId, Pageable pageable) {
         Page<Report> reportsPage = reportRepository.findAllByProjectId(projectId, pageable);
         return reportsPage.map(ReportDashboardDTO::new);
     }
 
-    public Page<ReportDashboardDTO> getAllReportsSolvedOnProject(Long projectId, Pageable pageable) {
+    public Page<ReportDashboardDTO> getAllReportsSolvedOnProject(String projectId, Pageable pageable) {
         Page<Report> reportsPage = reportRepository.findAllByProjectIdAndStatus(projectId, ReportStatus.DONE, pageable);
         return reportsPage.map(ReportDashboardDTO::new);
     }
