@@ -47,7 +47,6 @@ const EventsTable: React.FC<EventsTableProps> = ({ events }) => {
                             <TableRow>
                                 <TableCell width="40px" />
                                 <TableCell>Type</TableCell>
-                                <TableCell>Event ID</TableCell>
                                 <TableCell>Name</TableCell>
                                 <TableCell>Timestamp</TableCell>
                                 <TableCell>URL</TableCell>
