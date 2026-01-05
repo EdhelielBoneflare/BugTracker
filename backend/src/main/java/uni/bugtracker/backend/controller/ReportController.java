@@ -44,8 +44,7 @@ public class ReportController {
                 HttpStatus.CREATED);
     }
 
-    // access only developer
-    @PreAuthorize("@projectSecurity.hasAccessToProject(@reportService.getProjectIdByReportId(#id), authentication)")
+    @PreAuthorize("isAuthenticated()")
     @PatchMapping("/{id}/dashboard")
     public ResponseEntity<ReportCardDTO> updateDev(
             @PathVariable Long id,

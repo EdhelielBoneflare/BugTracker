@@ -6,6 +6,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.boot.test.autoconfigure.json.AutoConfigureJsonTesters;
 import org.springframework.boot.test.json.JacksonTester;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.FilterType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -17,6 +19,9 @@ import uni.bugtracker.backend.dto.report.*;
 import uni.bugtracker.backend.exception.ResourceNotFoundException;
 import uni.bugtracker.backend.model.CriticalityLevel;
 import uni.bugtracker.backend.model.ReportStatus;
+import uni.bugtracker.backend.security.ProjectSecurity;
+import uni.bugtracker.backend.security.filter.JwtAuthenticationFilter;
+import uni.bugtracker.backend.security.service.JwtService;
 import uni.bugtracker.backend.service.ReportService;
 
 import java.time.Instant;
@@ -28,7 +33,13 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@WebMvcTest(ReportController.class)
+@WebMvcTest(
+        controllers = ReportController.class,
+        excludeFilters = @ComponentScan.Filter(
+                type = FilterType.ASSIGNABLE_TYPE,
+                classes = {JwtAuthenticationFilter.class}
+        )
+)
 @AutoConfigureJsonTesters
 class ReportControllerTest {
 
@@ -43,6 +54,12 @@ class ReportControllerTest {
 
     @MockitoBean
     private ReportService reportService;
+
+    @MockitoBean
+    private JwtService jwtService;  // Добавляем мок для JwtService
+
+    @MockitoBean
+    private ProjectSecurity projectSecurity;  // Добавляем мок для ProjectSecurity
 
     private ReportCreationRequestWidget createWidgetRequest;
     private ReportUpdateRequestDashboard updateDashboardRequest;

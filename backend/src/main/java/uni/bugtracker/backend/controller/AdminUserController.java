@@ -15,13 +15,13 @@ import uni.bugtracker.backend.security.service.UserService;
 
 @RestController
 @RequestMapping("/api/admin")
-@PreAuthorize("hasRole('ADMIN')")
 @RequiredArgsConstructor
 public class AdminUserController {
 
     private final UserService userService;
 
     @GetMapping("/users")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Page<UserDTO>> getAll(
             @PageableDefault(
                     page = 0,
@@ -37,6 +37,7 @@ public class AdminUserController {
     }
 
     @PatchMapping("/users/{userId}/role")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<UserDTO> changeRole(
             @PathVariable String userId,
             @RequestParam Role role

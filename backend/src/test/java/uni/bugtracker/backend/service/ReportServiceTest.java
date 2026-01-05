@@ -56,6 +56,7 @@ class ReportServiceTest {
     private Project project;
     private Session session;
     private Report report;
+    private Developer developer;
 
     @BeforeEach
     void setUp() {
@@ -79,6 +80,11 @@ class ReportServiceTest {
         report.setTitle("Test Title");
         report.setComments("Test Comments");
         report.setCurrentUrl("https://example.com");
+
+        developer = new Developer();
+        developer.setId(1L);
+        developer.setUsername("dev1");
+        developer.setPassword("password");
     }
 
     @Test
@@ -165,10 +171,6 @@ class ReportServiceTest {
         ReportUpdateRequestDashboard request = new ReportUpdateRequestDashboard();
         request.setProjectId(1L);
         request.setDeveloperName("dev1");
-
-        Developer developer = new Developer();
-        developer.setId(1);
-        developer.setUsername("dev1");
 
         Report updatedReport = new Report();
         updatedReport.setId(100L);
@@ -338,10 +340,6 @@ class ReportServiceTest {
         ReportUpdateRequestDashboard request = new ReportUpdateRequestDashboard();
         request.setDeveloperName("dev1");
 
-        Developer developer = new Developer();
-        developer.setId(1);
-        developer.setUsername("dev1");
-
         Report updatedReport = createCompleteReport();
 
         when(reportRepository.findById(100L)).thenReturn(Optional.of(report));
@@ -359,7 +357,7 @@ class ReportServiceTest {
     }
 
     @Test
-    void updateReportFromDashboard_WithEmptyJson_ShouldUpdateWithDefaultFields(){
+    void updateReportFromDashboard_WithEmptyJson_ShouldUpdateWithDefaultFields() {
         // Arrange
         String rawJson = "{}";
         ReportUpdateRequestDashboard request = new ReportUpdateRequestDashboard();

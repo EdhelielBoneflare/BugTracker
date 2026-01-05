@@ -6,12 +6,17 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.boot.test.autoconfigure.json.AutoConfigureJsonTesters;
 import org.springframework.boot.test.json.JacksonTester;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.FilterType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import uni.bugtracker.backend.dto.session.SessionCreationResponse;
 import uni.bugtracker.backend.dto.session.SessionDetailsResponse;
 import uni.bugtracker.backend.dto.session.SessionRequest;
+import uni.bugtracker.backend.security.ProjectSecurity;
+import uni.bugtracker.backend.security.filter.JwtAuthenticationFilter;
+import uni.bugtracker.backend.security.service.JwtService;
 import uni.bugtracker.backend.service.SessionService;
 
 import java.time.Instant;
@@ -23,7 +28,13 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@WebMvcTest(SessionController.class)
+@WebMvcTest(
+        controllers = SessionController.class,
+        excludeFilters = @ComponentScan.Filter(
+                type = FilterType.ASSIGNABLE_TYPE,
+                classes = {JwtAuthenticationFilter.class}
+        )
+)
 @AutoConfigureJsonTesters
 class SessionControllerTest {
 
@@ -35,6 +46,12 @@ class SessionControllerTest {
 
     @MockitoBean
     private SessionService sessionService;
+
+    @MockitoBean
+    private JwtService jwtService;  // Добавляем мок для JwtService
+
+    @MockitoBean
+    private ProjectSecurity projectSecurity;  // Добавляем мок для ProjectSecurity
 
     private SessionRequest sessionRequest;
     private SessionCreationResponse sessionCreationResponse;

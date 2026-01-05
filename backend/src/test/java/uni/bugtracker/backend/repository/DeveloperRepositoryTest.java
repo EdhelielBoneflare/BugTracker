@@ -6,7 +6,9 @@ import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import uni.bugtracker.backend.model.Developer;
 import uni.bugtracker.backend.model.Project;
 
+import java.util.HashSet;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -29,7 +31,11 @@ class DeveloperRepositoryTest {
         Developer developer = new Developer();
         developer.setUsername("john.doe");
         developer.setPassword("encodedPassword");
-        developer.setProject(project);
+
+        Set<Project> projects = new HashSet<>();
+        projects.add(project);
+        developer.setProjects(projects);
+
         developerRepository.save(developer);
 
         // Act
@@ -38,7 +44,8 @@ class DeveloperRepositoryTest {
         // Assert
         assertThat(found).isPresent();
         assertThat(found.get().getUsername()).isEqualTo("john.doe");
-        assertThat(found.get().getProject().getName()).isEqualTo("Test Project");
+        assertThat(found.get().getProjects()).isNotEmpty();
+        assertThat(found.get().getProjects().iterator().next().getName()).isEqualTo("Test Project");
     }
 
     @Test
