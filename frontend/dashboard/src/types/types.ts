@@ -45,11 +45,12 @@ export interface Report {
     status: ReportStatus;
     userEmail?: string;
     userProvided?: boolean;
-    developerId?: string;
+    developerName?: string;
     projectId: string;
     sessionId?: number;
     createdAt: string;
     updatedAt?: string;
+    tags?: string[];
 }
 
 export interface Event {
@@ -92,6 +93,7 @@ export interface Session {
     userAgent?: string;
     viewportSize?: string;
     createdAt: string;
+    plugins?: string[];
 }
 
 export interface ApiResponse<T> {

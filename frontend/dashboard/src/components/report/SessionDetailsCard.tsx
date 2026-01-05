@@ -7,14 +7,16 @@ import {
     Box,
     Divider,
     Paper,
+    Stack,
+    Tooltip,
 } from '@mui/material';
 import {
     Computer,
     Language,
-    Web,
     DesktopWindows,
     Smartphone,
     Tablet,
+    Extension,
 } from '@mui/icons-material';
 import { Session } from '../../types/types';
 
@@ -32,6 +34,8 @@ const SessionDetailsCard: React.FC<SessionDetailsCardProps> = ({ session, getDev
             default: return <DesktopWindows fontSize="small" />;
         }
     };
+
+    const hasPlugins = session.plugins && session.plugins.length > 0;
 
     return (
         <Card>
@@ -153,6 +157,50 @@ const SessionDetailsCard: React.FC<SessionDetailsCardProps> = ({ session, getDev
                         </Box>
                     )}
                 </Box>
+
+                {/* Плагины браузера */}
+                {hasPlugins && (
+                    <>
+                        <Divider sx={{ my: 2 }} />
+                        <Typography variant="subtitle2" gutterBottom sx={{ mb: 2 }} component="div">
+                            <Extension fontSize="small" sx={{ mr: 1, verticalAlign: 'middle' }} />
+                            Browser Plugins
+                        </Typography>
+                        <Paper variant="outlined" sx={{ p: 2, mb: 2, bgcolor: 'grey.50' }}>
+                            <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
+                                {session.plugins!.map((plugin, index) => (
+                                    <Tooltip key={index} title={plugin} arrow placement="top">
+                                        <Chip
+                                            label={
+                                                <Box sx={{
+                                                    maxWidth: '150px',
+                                                    overflow: 'hidden',
+                                                    textOverflow: 'ellipsis',
+                                                    whiteSpace: 'nowrap'
+                                                }}>
+                                                    {plugin}
+                                                </Box>
+                                            }
+                                            size="medium"
+                                            variant="outlined"
+                                            color="primary"
+                                            sx={{
+                                                m: 0.5,
+                                                '&:hover': {
+                                                    backgroundColor: 'primary.light',
+                                                    color: 'primary.contrastText'
+                                                }
+                                            }}
+                                        />
+                                    </Tooltip>
+                                ))}
+                            </Stack>
+                            <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }} component="div">
+                                Total: {session.plugins!.length} plugins detected
+                            </Typography>
+                        </Paper>
+                    </>
+                )}
 
                 <Divider sx={{ my: 2 }} />
 

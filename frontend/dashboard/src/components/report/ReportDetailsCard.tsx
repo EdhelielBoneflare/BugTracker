@@ -25,6 +25,8 @@ export interface ReportEditData {
     status: ReportStatus;
     criticality: CriticalityLevel;
     comments: string;
+    projectId?: string; // Добавляем
+    developerName?: string; // Добавляем
 }
 
 interface ReportDetailsCardProps {
@@ -103,15 +105,40 @@ const ReportDetailsCard: React.FC<ReportDetailsCardProps> = ({
                 </Box>
 
                 {editing ? (
-                    <TextField
-                        label="Comments"
-                        fullWidth
-                        multiline
-                        rows={4}
-                        value={editData.comments}
-                        onChange={(e) => onEditDataChange('comments', e.target.value)}
-                        sx={{ mb: 2 }}
-                    />
+                    <>
+                        <Stack spacing={2} sx={{ mb: 2 }}>
+                            {/* Project ID */}
+                            <TextField
+                                label="Project ID"
+                                fullWidth
+                                value={editData.projectId || ''}
+                                onChange={(e) => onEditDataChange('projectId', e.target.value)}
+                                size="small"
+                                placeholder="Enter project ID"
+                            />
+
+                            {/* Developer Name */}
+                            <TextField
+                                label="Developer Name"
+                                fullWidth
+                                value={editData.developerName || ''}
+                                onChange={(e) => onEditDataChange('developerName', e.target.value)}
+                                size="small"
+                                placeholder="Enter developer name"
+                            />
+
+                            {/* Comments */}
+                            <TextField
+                                label="Comments"
+                                fullWidth
+                                multiline
+                                rows={4}
+                                value={editData.comments}
+                                onChange={(e) => onEditDataChange('comments', e.target.value)}
+                                size="small"
+                            />
+                        </Stack>
+                    </>
                 ) : report.comments ? (
                     <Paper variant="outlined" sx={{ p: 2, mb: 3, bgcolor: 'grey.50' }}>
                         <Typography variant="subtitle2" color="text.secondary" gutterBottom component="div">
@@ -129,11 +156,46 @@ const ReportDetailsCard: React.FC<ReportDetailsCardProps> = ({
                     gap: 2,
                     mb: 2
                 }}>
-                    {report.developerId && (
+                    {report.projectId && (
+                        <Box>
+                            <Typography variant="body2" display="flex" alignItems="center" gap={1} component="div">
+                                <strong>Project ID:</strong> {report.projectId}
+                            </Typography>
+                        </Box>
+                    )}
+
+                    {report.developerName && (
                         <Box>
                             <Typography variant="body2" display="flex" alignItems="center" gap={1} component="div">
                                 <Person fontSize="small" />
-                                <strong>Developer ID:</strong> {report.developerId}
+                                <strong>Developer name:</strong> {report.developerName}
+                            </Typography>
+                        </Box>
+                    )}
+
+                    {report.tags && report.tags.length > 0 && (
+                        <Box sx={{ gridColumn: { xs: 'span 1', sm: 'span 2' } }}>
+                            <Typography variant="body2" display="flex" alignItems="center" gap={1} component="div">
+                                <strong>Tags:</strong>
+                                <Stack direction="row" spacing={0.5} sx={{ ml: 1, flexWrap: 'wrap', gap: 0.5 }}>
+                                    {report.tags.map((tag, index) => (
+                                        <Chip
+                                            key={index}
+                                            label={tag}
+                                            size="small"
+                                            variant="outlined"
+                                            color="primary"
+                                        />
+                                    ))}
+                                </Stack>
+                            </Typography>
+                        </Box>
+                    )}
+
+                    {report.sessionId && (
+                        <Box>
+                            <Typography variant="body2" display="flex" alignItems="center" gap={1} component="div">
+                                <strong>Session ID:</strong> {report.sessionId}
                             </Typography>
                         </Box>
                     )}
@@ -161,16 +223,20 @@ const ReportDetailsCard: React.FC<ReportDetailsCardProps> = ({
 
                     {report.currentUrl && (
                         <Box>
-                            <Typography variant="body2" display="flex" alignItems="center" gap={1} component="div">
-                                <Web fontSize="small" />
-                                <strong>URL:</strong>
-                                <Box component="span" sx={{
-                                    overflow: 'hidden',
-                                    textOverflow: 'ellipsis',
-                                    whiteSpace: 'nowrap',
-                                    maxWidth: '200px'
-                                }}>
-                                    {report.currentUrl}
+                            <Typography variant="body2" display="flex" alignItems="flex-start" gap={1} component="div">
+                                <Web fontSize="small" sx={{ mt: 0.5 }} />
+                                <Box>
+                                    <Typography variant="body2" fontWeight="medium">URL:</Typography>
+                                    <Typography
+                                        variant="body2"
+                                        sx={{
+                                            wordBreak: 'break-all',
+                                            overflowWrap: 'break-word',
+                                            whiteSpace: 'pre-wrap'
+                                        }}
+                                    >
+                                        {report.currentUrl}
+                                    </Typography>
                                 </Box>
                             </Typography>
                         </Box>

@@ -11,6 +11,7 @@ import {
     MenuItem,
     TextField,
     Button,
+    Stack,
 } from '@mui/material';
 import { Report, ReportStatus, CriticalityLevel } from '../../types/types';
 
@@ -18,6 +19,8 @@ export interface EditReportData {
     status: ReportStatus;
     criticality: CriticalityLevel;
     comments: string;
+    projectId?: string;
+    developerName?: string;
 }
 
 interface EditReportDialogProps {
@@ -47,45 +50,70 @@ const EditReportDialog: React.FC<EditReportDialogProps> = ({
                     {editingReport?.title}
                 </Typography>
 
-                <FormControl fullWidth sx={{ mb: 2, mt: 2 }}>
-                    <InputLabel>Status</InputLabel>
-                    <Select
-                        value={editData.status}
-                        onChange={(e) => onEditDataChange('status', e.target.value as ReportStatus)}
-                        label="Status"
-                    >
-                        <MenuItem value={ReportStatus.NEW}>New</MenuItem>
-                        <MenuItem value={ReportStatus.IN_PROGRESS}>In Progress</MenuItem>
-                        <MenuItem value={ReportStatus.DONE}>Done</MenuItem>
-                    </Select>
-                </FormControl>
+                <Stack spacing={2} sx={{ mt: 2 }}>
+                    {/* Project ID */}
+                    <TextField
+                        label="Project ID"
+                        fullWidth
+                        value={editData.projectId || ''}
+                        onChange={(e) => onEditDataChange('projectId', e.target.value)}
+                        size="small"
+                        placeholder="Enter project ID"
+                    />
 
-                <FormControl fullWidth sx={{ mb: 2 }}>
-                    <InputLabel>Criticality</InputLabel>
-                    <Select
-                        value={editData.criticality}
-                        onChange={(e) => onEditDataChange('criticality', e.target.value as CriticalityLevel)}
-                        label="Criticality"
-                    >
-                        <MenuItem value={CriticalityLevel.LOW}>Low</MenuItem>
-                        <MenuItem value={CriticalityLevel.MEDIUM}>Medium</MenuItem>
-                        <MenuItem value={CriticalityLevel.HIGH}>High</MenuItem>
-                        <MenuItem value={CriticalityLevel.CRITICAL}>Critical</MenuItem>
-                        <MenuItem value={CriticalityLevel.UNKNOWN}>Unknown</MenuItem>
-                    </Select>
-                </FormControl>
+                    {/* Developer Name */}
+                    <TextField
+                        label="Developer Name"
+                        fullWidth
+                        value={editData.developerName || ''}
+                        onChange={(e) => onEditDataChange('developerName', e.target.value)}
+                        size="small"
+                        placeholder="Enter developer name"
+                    />
 
-                <TextField
-                    label="Comments"
-                    fullWidth
-                    multiline
-                    rows={4}
-                    value={editData.comments}
-                    onChange={(e) => onEditDataChange('comments', e.target.value)}
-                    sx={{ mb: 2 }}
-                />
+                    {/* Status */}
+                    <FormControl fullWidth size="small">
+                        <InputLabel>Status</InputLabel>
+                        <Select
+                            value={editData.status}
+                            onChange={(e) => onEditDataChange('status', e.target.value as ReportStatus)}
+                            label="Status"
+                        >
+                            <MenuItem value={ReportStatus.NEW}>New</MenuItem>
+                            <MenuItem value={ReportStatus.IN_PROGRESS}>In Progress</MenuItem>
+                            <MenuItem value={ReportStatus.DONE}>Done</MenuItem>
+                        </Select>
+                    </FormControl>
 
-                <Typography variant="caption" color="text.secondary" display="block">
+                    {/* Criticality */}
+                    <FormControl fullWidth size="small">
+                        <InputLabel>Criticality</InputLabel>
+                        <Select
+                            value={editData.criticality}
+                            onChange={(e) => onEditDataChange('criticality', e.target.value as CriticalityLevel)}
+                            label="Criticality"
+                        >
+                            <MenuItem value={CriticalityLevel.LOW}>Low</MenuItem>
+                            <MenuItem value={CriticalityLevel.MEDIUM}>Medium</MenuItem>
+                            <MenuItem value={CriticalityLevel.HIGH}>High</MenuItem>
+                            <MenuItem value={CriticalityLevel.CRITICAL}>Critical</MenuItem>
+                            <MenuItem value={CriticalityLevel.UNKNOWN}>Unknown</MenuItem>
+                        </Select>
+                    </FormControl>
+
+                    {/* Comments */}
+                    <TextField
+                        label="Comments"
+                        fullWidth
+                        multiline
+                        rows={4}
+                        value={editData.comments}
+                        onChange={(e) => onEditDataChange('comments', e.target.value)}
+                        size="small"
+                    />
+                </Stack>
+
+                <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 2 }}>
                     Reported: {editingReport && new Date(editingReport.reportedAt).toLocaleString()}
                 </Typography>
             </DialogContent>
