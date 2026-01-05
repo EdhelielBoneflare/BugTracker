@@ -14,7 +14,7 @@ public interface ReportRepository extends JpaRepository<Report, Long> {
     /*filter by PROJECT_ID, date/devName/tags/level/status
     * */
 
-    Page<Report> findAllByProjectId(Long projectId, Pageable pageable);
+    Page<Report> findAllByProjectId(String projectId, Pageable pageable);
     Page<Report> findAllByStatus(ReportStatus status, Pageable pageable);
-    Page<Report> findAllByProjectIdAndStatus(Long projectId, ReportStatus status, Pageable pageable);
+    Page<Report> findAllByProjectIdAndStatus(String projectId, ReportStatus status, Pageable pageable);
 }
