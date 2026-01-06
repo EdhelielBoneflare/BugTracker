@@ -36,7 +36,24 @@ export class ScreenshotCapturer {
         this.checkAvailability();
         if (this.html2canvas) return;
 
-        // Otherwise, load from CDN
+        // First try a dynamic import so bundlers/CSP-friendly deployments that include html2canvas
+        // as an npm dependency will provide it as same-origin code. This avoids tracking-prevention
+        // blocking the CDN-hosted script.
+        try {
+            // eslint-disable-next-line @typescript-eslint/no-var-requires
+            const mod = await import('html2canvas');
+            // Module default is the html2canvas function
+            const impl = (mod && (mod.default || mod)) as any;
+            if (typeof impl === 'function') {
+                this.html2canvas = impl as Html2Canvas;
+                return;
+            }
+        } catch (e) {
+            // dynamic import failed (module not installed or blocked). Fall through to CDN loader.
+            // console.debug('[BugTracker] dynamic import of html2canvas failed, falling back to CDN:', e);
+        }
+
+        // Otherwise, load from CDN as a last resort
         await new Promise<void>((resolve, reject) => {
             const script = document.createElement('script');
             script.src = this.cdnUrl;

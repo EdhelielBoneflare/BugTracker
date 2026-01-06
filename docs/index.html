@@ -8,8 +8,8 @@
 
   <script src="https://github.com/EdhelielBoneflare/BugTracker/blob/main/frontend/widget/src/loader.ts"></script>
   <script>
-      const PROJECT_ID = 'test-project-id';
-      BugTracker.initialize(PROJECT_ID);
+    const PROJECT_ID = 'test-project-id';
+    BugTracker.initialize(PROJECT_ID);
   </script>
 
   <style>
@@ -35,28 +35,28 @@
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <header>
-      <div>
-        <h1>BugTracker — тестовая площадка</h1>
-        <p class="lead">Набор элементов для проверки действий</p>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>BugTracker — тестовая площадка</h1>
+      <p class="lead">Набор элементов для проверки действий</p>
+    </div>
+  </header>
+
+  <div class="panel">
+    <div class="card">
+
+      <div class="gridButtons">
+        <button id="btnTyk">Тык‑тык</button>
+        <button id="btnMeow" class="meow">Мяу</button>
+
+        <button id="btnCreateEvent" class="tiny">Создать событие</button>
+
+        <button id="btnColor" class="tiny">Поменять цвет фона</button>
       </div>
-    </header>
 
-    <div class="panel">
-      <div class="card">
-
-        <div class="gridButtons">
-          <button id="btnTyk">Тык‑тык</button>
-          <button id="btnMeow" class="meow">Мяу</button>
-
-          <button id="btnCreateEvent" class="tiny">Создать событие</button>
-
-          <button id="btnColor" class="tiny">Поменять цвет фона</button>
-        </div>
-
-        <div style="margin-top:12px" class="row">
-          <div class="muted">Проект для тестов:</div>
+      <div style="margin-top:12px" class="row">
+        <div class="muted">Проект для тестов:</div>
       </div>
     </div>
   </div>
@@ -114,5 +114,7 @@
       localStorage.bt_apiUrl = $('apiUrl').value; localStorage.bt_token = $('jwt').value; localStorage.bt_projectId = $('projectId').value;
     });
   </script>
+
+</div>
 </body>
 </html>

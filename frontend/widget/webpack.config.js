@@ -1,7 +1,7 @@
 const path = require('path');
 
 module.exports = {
-    entry: './src/types.ts',
+    entry: './src/index.ts',
     output: {
         filename: 'bugtracker.bundle.js',
         path: path.resolve(__dirname, 'dist'),
@@ -23,5 +23,9 @@ module.exports = {
             }
         ]
     },
-    mode: 'production'
+    mode: 'production',
+    optimization: {
+        splitChunks: false,
+        runtimeChunk: false
+    }
 };

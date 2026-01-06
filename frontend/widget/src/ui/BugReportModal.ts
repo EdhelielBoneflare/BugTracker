@@ -6,6 +6,8 @@ export class BugReportModal {
     private content: HTMLElement | null = null;
     private screenshotCapturer: ScreenshotCapturer;
     private screenshotData: string | null = null;
+    private screenshotAllowed: boolean = false;
+    private rememberConsentKey: string = 'bt_screenshot_allowed';
     private onSubmit: (report: {
         screenshot: string | null;
         comment: string;
@@ -31,6 +33,14 @@ export class BugReportModal {
 
         this.modal = this.createModal();
         document.body.appendChild(this.modal);
+
+        // Restore remembered consent if available
+        try {
+            const stored = sessionStorage.getItem(this.rememberConsentKey);
+            if (stored === '1') this.screenshotAllowed = true;
+        } catch (e) {
+            // storage might be blocked by tracking prevention; silently ignore
+        }
 
         // Capture initial screenshot (optional target)
         await this.capturePreview();
@@ -165,6 +175,15 @@ export class BugReportModal {
                     <div style="margin-top:8px;">
                         <button id="bugtracker-capture-btn" type="button">Capture Screenshot</button>
                     </div>
+                    <div id="bugtracker-screenshot-consent" style="display:none;margin-top:8px;padding:8px;border-radius:4px;background:#f9f9f9;">
+                        <div style="margin-bottom:6px;">Do you allow taking a screenshot of your browser window for this bug report? This will capture visible content only.</div>
+                        <label style="display:flex;align-items:center;gap:6px;margin-bottom:6px;"><input type="checkbox" id="bugtracker-remember-consent" /> Remember my choice for this session</label>
+                        <div>
+                            <button id="bugtracker-allow-screenshot" type="button" style="margin-right:8px;">Allow</button>
+                            <button id="bugtracker-deny-screenshot" type="button">Deny</button>
+                        </div>
+                        <div id="bugtracker-screenshot-consent-error" style="display:none;color:#c62828;margin-top:6px;font-size:12px;"></div>
+                    </div>
                 </div>
                 <textarea id="bugtracker-comment" placeholder="Describe what happened" rows="6"></textarea>
                 <input id="bugtracker-email" placeholder="Your email (optional)" type="email" />
@@ -239,19 +258,83 @@ export class BugReportModal {
         const captureBtn = this.content?.querySelector('#bugtracker-capture-btn') as HTMLButtonElement;
         captureBtn?.addEventListener('click', async (e) => {
             e.preventDefault();
-            await this.captureScreenshot();
+            await this.requestConsentAndCapture();
+        });
+
+        const allowBtn = this.content?.querySelector('#bugtracker-allow-screenshot') as HTMLButtonElement;
+        allowBtn?.addEventListener('click', async (e) => {
+            e.preventDefault();
+            await this.handleAllowConsent();
+        });
+
+        const denyBtn = this.content?.querySelector('#bugtracker-deny-screenshot') as HTMLButtonElement;
+        denyBtn?.addEventListener('click', (e) => {
+            e.preventDefault();
+            this.handleDenyConsent();
         });
 
         // Allow clicking preview to re-capture or zoom later
         const preview = this.content?.querySelector('#bugtracker-screenshot-preview') as HTMLElement;
         preview?.addEventListener('click', async () => {
-            await this.captureScreenshot();
+            await this.requestConsentAndCapture();
         });
 
         // Close when clicking outside content
         modal.addEventListener('click', (evt) => {
             if (evt.target === modal) this.close();
         });
+    }
+
+    private async requestConsentAndCapture(): Promise<void> {
+        if (this.screenshotAllowed) {
+            await this.captureScreenshot();
+            return;
+        }
+
+        // Show consent UI inside modal
+        const consentEl = this.content?.querySelector('#bugtracker-screenshot-consent') as HTMLElement | null;
+        if (!consentEl) return;
+        consentEl.style.display = 'block';
+        // scroll into view
+        consentEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    private async handleAllowConsent(): Promise<void> {
+        // Mark consent and optionally remember
+        this.screenshotAllowed = true;
+        const rememberCheckbox = this.content?.querySelector('#bugtracker-remember-consent') as HTMLInputElement | null;
+        const remember = !!(rememberCheckbox && rememberCheckbox.checked);
+        if (remember) {
+            try {
+                sessionStorage.setItem(this.rememberConsentKey, '1');
+            } catch (e) {
+                // storage might be blocked
+                console.debug('[BugTracker] Could not persist screenshot consent:', e);
+            }
+        }
+
+        // Hide consent UI and proceed to capture
+        const consentEl = this.content?.querySelector('#bugtracker-screenshot-consent') as HTMLElement | null;
+        if (consentEl) consentEl.style.display = 'none';
+
+        try {
+            await this.captureScreenshot();
+        } catch (err) {
+            const errEl = this.content?.querySelector('#bugtracker-screenshot-consent-error') as HTMLElement | null;
+            if (errEl) {
+                errEl.style.display = 'block';
+                errEl.textContent = 'Screenshot capture failed. You can still submit without a screenshot.';
+            }
+        }
+    }
+
+    private handleDenyConsent(): void {
+        this.screenshotAllowed = false;
+        // hide consent UI
+        const consentEl = this.content?.querySelector('#bugtracker-screenshot-consent') as HTMLElement | null;
+        if (consentEl) consentEl.style.display = 'none';
+        // show short message
+        this.showError('Screenshot denied. You can still submit the report without a screenshot.');
     }
 
     private updatePreviewElement(target: HTMLElement | undefined | null, dataUrl: string): void {
