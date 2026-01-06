@@ -19,7 +19,8 @@ public class ReportMapper {
     public Report fromCreateOnWidget(
             ReportCreationRequestWidget request,
             Project project,
-            Session session
+            Session session,
+            byte[] screen
     ) {
         Report report = new Report();
 
@@ -40,7 +41,9 @@ public class ReportMapper {
         report.setReportedAt(request.getReportedAt());
         report.setComments(trim(request.getComments(), MAX_COMMENTS));
         report.setUserEmail(request.getUserEmail());
-        report.setScreen(request.getScreen());
+        if (screen != null) {
+            report.setScreen(screen);
+        }
         report.setCurrentUrl(request.getCurrentUrl());
         report.setUserProvided(request.getUserProvided());
         report.setStatus(ReportStatus.NEW);

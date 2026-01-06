@@ -34,12 +34,12 @@ public class ReportService {
     private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
-    public Long createReport(ReportCreationRequestWidget request) {
+    public Long createReport(ReportCreationRequestWidget request, byte[] screen) {
         Project project = projectRepository.findById(request.getProjectId())
                 .orElseThrow(() -> new ResourceNotFoundException("Project doesn't exist"));
         Session session = sessionRepository.findById(request.getSessionId())
                 .orElseThrow(() -> new ResourceNotFoundException("Session doesn't exist"));
-        Report report = mapper.fromCreateOnWidget(request, project, session);
+        Report report = mapper.fromCreateOnWidget(request, project, session, screen);
         List<Event> events = eventRepository.findAllBySessionId(session.getId());
         mapper.attachEvents(report, events);
         session.setEndTime(
@@ -48,8 +48,7 @@ public class ReportService {
                         .orElse(null)
         );
         report.setCriticality(CriticalityLevel.UNKNOWN);
-        reportRepository.save(report);
-
+            reportRepository.save(report);
         eventPublisher.publishEvent(new ReportCreatedEvent(report.getId()));
         return report.getId();
     }
@@ -102,6 +101,12 @@ public class ReportService {
         Report report = reportRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Report doesn't exist"));
         return new ReportCardDTO(report);
+    }
+
+    public byte[] getScreen(Long reportId) {
+        Report report = reportRepository.findById(reportId)
+                .orElseThrow(() -> new ResourceNotFoundException("Report doesn't exist"));
+        return report.getScreen();
     }
 
     public String getProjectIdByReportId(Long reportId) {

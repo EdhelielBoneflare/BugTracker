@@ -36,7 +36,7 @@ public class ReportCreationRequestWidget {
     private String userEmail;
 
     // Screenshot may be omitted if user denies consent; make field optional
-    private String screen;
+//    private String screen;
 
     @NotBlank
     private String currentUrl;

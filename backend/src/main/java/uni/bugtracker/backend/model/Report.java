@@ -2,7 +2,6 @@ package uni.bugtracker.backend.model;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
@@ -55,9 +54,8 @@ public class Report {
 
 //    @NotBlank // if our system composes all events, we cannot get screen
     @Lob // large object
-    @Column(columnDefinition = "TEXT")
-    @Basic(fetch = FetchType.LAZY)  // load the image only while referencing (saving memory when selecting entities)
-    private String screen;
+//    @Column(name = "screen", columnDefinition = "BYTEA")
+    private byte[] screen;
 
     @Size(max = 2048)
     @Column(length = 2048)
