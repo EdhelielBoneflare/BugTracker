@@ -41,7 +41,7 @@ export interface Report {
     criticality: CriticalityLevel;
     currentUrl?: string;
     reportedAt: string;
-    screen?: string;
+    screenUrl: string | null;
     status: ReportStatus;
     userEmail?: string;
     userProvided?: boolean;

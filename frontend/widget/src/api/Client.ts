@@ -1,7 +1,6 @@
-import { PayloadBuilder } from './payloads';
-import { ApiResponse } from '../types/api';
-import { InternalEvent } from '../types/events';
-import { SessionData } from '../types/session';
+import {ApiResponse} from '../types/api';
+import {EventType, InternalEvent} from '../types/events';
+import {SessionData} from '../types/session';
 
 export class Client {
     private baseUrl: string;
@@ -25,12 +24,6 @@ export class Client {
             throw new Error('Session ID must be numeric to send events to backend');
         }
 
-        // Attempt to parse projectId to number (backend expects Long)
-        const numericProjectId = Number(this.projectId);
-        if (Number.isNaN(numericProjectId)) {
-            throw new Error('Project ID must be numeric to send events to backend');
-        }
-
         // Send events one by one and return the last response (or aggregate if desired)
         let lastResponse: Response | null = null;
         for (const ev of events) {
@@ -39,22 +32,42 @@ export class Client {
             const fallback = combined === '' ? '' : combined;
 
             // Prefer a client-generated event id to use as the 'log' (correlation id)
-            const eventLogId = ev.eventId || (ev.customMetadata && ev.customMetadata.eventLogId) || undefined;
+            const eventLogId = ev.customMetadata?.eventLogId ?? ev.customMetadata?.eventId;
+
+            // Build log according to event type: errors -> message, actions -> action attributes, else id/fallback
+            let logValue: string;
+            if (ev.type === EventType.ERROR) {
+                logValue = ev.message ?? fallback;
+            } else if (ev.type === EventType.ACTION) {
+                const cm = ev.customMetadata || {};
+                if (cm.method || cm.action) {
+                    logValue = `form: ${cm.method ?? ''} ${cm.action ?? ''}`.trim();
+                } else if (cm.href) {
+                    logValue = `link: ${cm.href}`;
+                } else {
+                    logValue = eventLogId ?? fallback;
+                }
+            } else {
+                logValue = eventLogId ?? fallback;
+            }
 
             const payload = {
                 sessionId: numericSessionId,
                 type: ev.type,
                 name: ev.name,
                 // Use client-side event id as `log` when available so backend can correlate
-                log: eventLogId ?? fallback,
+                log: logValue,
                 stackTrace: ev.stackTrace ?? '',
                 url: ev.url ?? window.location.href,
-                element: ev.tagName ?? (ev.customMetadata && (ev.customMetadata.element || ev.customMetadata.elementId)) ?? '',
+                // Prefer element id/class or tag name for quick indexing; include full details under metadata
+                element: (ev.customMetadata && (ev.customMetadata.elementId || ev.customMetadata.element)) ?? ev.tagName ?? '',
                 timestamp: new Date(ev.timestamp).toISOString(),
                 metadata: {
                     fileName: ev.fileName ?? '',
                     lineNumber: ev.lineNumber ? String(ev.lineNumber) : '',
-                    statusCode: ev.statusCode ? String(ev.statusCode) : ''
+                    statusCode: ev.statusCode ? String(ev.statusCode) : '',
+                    // Preserve all custom metadata so action attributes are not lost
+                    ...(ev.customMetadata || {})
                 }
             };
 
@@ -97,30 +110,45 @@ export class Client {
             return false;
         }
 
-        const numericProjectId = Number(this.projectId);
-        if (Number.isNaN(numericProjectId)) {
-            return false;
-        }
-
         try {
             for (const ev of events) {
-                const eventLogId = ev.eventId || (ev.customMetadata && ev.customMetadata.eventLogId) || undefined;
+                // Prefer client-provided ids from customMetadata
+                const eventLogId = ev.customMetadata?.eventLogId ?? ev.customMetadata?.eventId;
+
                 const combined = (ev.message || '') + (ev.stackTrace ? (': ' + ev.stackTrace) : '');
                 const fallback = combined === '' ? '' : combined;
+
+                // Build log according to event type
+                let logValue: string;
+                if (ev.type === EventType.ERROR) {
+                    logValue = ev.message ?? fallback;
+                } else if (ev.type === EventType.ACTION) {
+                    const cm = ev.customMetadata || {};
+                    if (cm.method || cm.action) {
+                        logValue = `form: ${cm.method ?? ''} ${cm.action ?? ''}`.trim();
+                    } else if (cm.href) {
+                        logValue = `link: ${cm.href}`;
+                    } else {
+                        logValue = eventLogId ?? fallback;
+                    }
+                } else {
+                    logValue = eventLogId ?? fallback;
+                }
 
                 const payload = {
                     sessionId: numericSessionId,
                     type: ev.type,
                     name: ev.name,
-                    log: eventLogId ?? fallback,
+                    log: logValue,
                     stackTrace: ev.stackTrace ?? '',
                     url: ev.url ?? window.location.href,
-                    element: ev.tagName ?? (ev.customMetadata && (ev.customMetadata.element || ev.customMetadata.elementId)) ?? '',
+                    element: (ev.customMetadata && (ev.customMetadata.elementId || ev.customMetadata.element)) ?? ev.tagName ?? '',
                     timestamp: new Date(ev.timestamp).toISOString(),
                     metadata: {
                         fileName: ev.fileName ?? '',
                         lineNumber: ev.lineNumber ? String(ev.lineNumber) : '',
-                        statusCode: ev.statusCode ? String(ev.statusCode) : ''
+                        statusCode: ev.statusCode ? String(ev.statusCode) : '',
+                        ...(ev.customMetadata || {})
                     }
                 };
 
@@ -148,18 +176,13 @@ export class Client {
     ): Promise<ApiResponse> {
         // For backend, POST to /api/reports/widget with ReportCreationRequestWidget shape
         const numericSessionId = Number(sessionId);
-        const numericProjectId = Number(this.projectId);
-
-        if (Number.isNaN(numericProjectId)) {
-            throw new Error('Project ID must be numeric to send bug reports to backend');
-        }
 
         if (Number.isNaN(numericSessionId)) {
             throw new Error('Session ID must be numeric to send bug reports to backend');
         }
 
         const payload = {
-            projectId: numericProjectId,
+            projectId: this.projectId,
             sessionId: numericSessionId,
             title: data.comment ? data.comment.substring(0, 80) : 'User report',
             tags: [],
@@ -198,14 +221,8 @@ export class Client {
 
     // Create session on server and return created numeric session id or null
     async sendSessionStart(sessionId: string, sessionData: SessionData): Promise<number | null> {
-        const numericProjectId = Number(this.projectId);
-        if (Number.isNaN(numericProjectId)) {
-            // Cannot create server session without numeric projectId
-            return null;
-        }
-
         const payload = {
-            projectId: numericProjectId,
+            projectId: this.projectId,
             startTime: sessionData.startTime,
             browser: sessionData.browser,
             browserVersion: sessionData.browserVersion,

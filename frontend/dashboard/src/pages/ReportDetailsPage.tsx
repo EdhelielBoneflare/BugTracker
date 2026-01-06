@@ -5,7 +5,16 @@ import {
     CircularProgress,
     Alert,
     Stack,
+    Paper,
+    Typography,
+    Button,
 } from '@mui/material';
+import {
+    ZoomIn,
+    Fullscreen,
+    Download,
+    ImageNotSupported
+} from '@mui/icons-material';
 import { api } from '../api/Api';
 import { Report, Session, Event, ReportStatus, CriticalityLevel } from '../types/types';
 import { useAuth } from '../contexts/AuthContext';
@@ -24,12 +33,14 @@ const ReportDetailsPage: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [editing, setEditing] = useState(false);
+    const [screenshotUrl, setScreenshotUrl] = useState<string | null>(null);
+    const [fullscreenScreenshot, setFullscreenScreenshot] = useState(false);
     const [editData, setEditData] = useState({
         status: ReportStatus.NEW,
         criticality: CriticalityLevel.UNKNOWN,
         comments: '',
-        projectId: '', // Добавлено
-        developerName: '', // Добавлено
+        projectId: '',
+        developerName: '',
     });
 
     const canEditReport = () => {
@@ -67,20 +78,35 @@ const ReportDetailsPage: React.FC = () => {
                 userProvided: Boolean(reportData.userProvided || (reportData as any)?.userProvided || false),
                 sessionId: reportData.sessionId || (reportData as any)?.sessionId || null,
                 currentUrl: reportData.currentUrl || (reportData as any)?.currentUrl || '',
-                screen: reportData.screen || (reportData as any)?.screen || '',
+                // Получаем URL скриншота из DTO
+                screenUrl: reportData.screenUrl || (reportData as any)?.screenUrl || null,
                 tags: reportData.tags || (reportData as any)?.tags || [],
             };
 
             console.log('📊 Report data:', processedReport);
+            console.log('📸 Screenshot URL:', processedReport.screenUrl);
 
             setReport(processedReport as Report);
+
+            // Если есть URL скриншота, создаем полный URL
+            if (processedReport.screenUrl) {
+                // Если URL относительный, добавляем базовый URL
+                if (processedReport.screenUrl.startsWith('/')) {
+                    setScreenshotUrl(`http://localhost:8080${processedReport.screenUrl}`);
+                } else {
+                    setScreenshotUrl(processedReport.screenUrl);
+                }
+            } else if (processedReport.id) {
+                // Формируем URL для получения скриншота
+                setScreenshotUrl(`http://localhost:8080/api/reports/${processedReport.id}/screenshot`);
+            }
 
             setEditData({
                 status: processedReport.status,
                 criticality: normalizeCriticality(processedReport),
                 comments: processedReport.comments,
-                projectId: processedReport.projectId || '', // Добавлено
-                developerName: processedReport.developerName || '', // Добавлено
+                projectId: processedReport.projectId || '',
+                developerName: processedReport.developerName || '',
             });
 
             if (processedReport.sessionId) {
@@ -131,6 +157,35 @@ const ReportDetailsPage: React.FC = () => {
         }
     };
 
+    // Функция для скачивания скриншота
+    const handleDownloadScreenshot = async () => {
+        if (!report?.id) return;
+
+        try {
+            const response = await fetch(`http://localhost:8080/api/reports/${report.id}/screenshot`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                }
+            });
+
+            if (response.ok) {
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `screenshot-report-${report.id}.png`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+            }
+        } catch (error) {
+            console.error('Failed to download screenshot:', error);
+            setError('Failed to download screenshot');
+        }
+    };
+
     const getCriticalityColor = (criticality: CriticalityLevel) => {
         switch(criticality) {
             case CriticalityLevel.CRITICAL: return 'error';
@@ -168,8 +223,8 @@ const ReportDetailsPage: React.FC = () => {
                 status: editData.status,
                 criticality: editData.criticality,
                 comments: editData.comments,
-                projectId: editData.projectId || undefined, // Добавлено
-                developerName: editData.developerName || undefined, // Добавлено
+                projectId: editData.projectId || undefined,
+                developerName: editData.developerName || undefined,
             });
 
             const processedReport = {
@@ -191,8 +246,8 @@ const ReportDetailsPage: React.FC = () => {
             status: report.status || ReportStatus.NEW,
             criticality: normalizeCriticality(report),
             comments: report.comments || '',
-            projectId: report.projectId || '', // Добавлено
-            developerName: report.developerName || '', // Добавлено
+            projectId: report.projectId || '',
+            developerName: report.developerName || '',
         });
         setEditing(false);
     };
@@ -244,6 +299,96 @@ const ReportDetailsPage: React.FC = () => {
             )}
 
             <Stack spacing={3}>
+                {/* Screenshot Section */}
+                {screenshotUrl && (
+                    <Paper elevation={2} sx={{ p: 3 }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                            <Typography variant="h6">
+                                Screenshot
+                            </Typography>
+                            <Box>
+                                <Button
+                                    startIcon={<ZoomIn />}
+                                    onClick={() => setFullscreenScreenshot(!fullscreenScreenshot)}
+                                    size="small"
+                                    sx={{ mr: 1 }}
+                                >
+                                    {fullscreenScreenshot ? 'Normal View' : 'Zoom In'}
+                                </Button>
+                                <Button
+                                    startIcon={<Download />}
+                                    onClick={handleDownloadScreenshot}
+                                    size="small"
+                                    variant="outlined"
+                                >
+                                    Download
+                                </Button>
+                            </Box>
+                        </Box>
+
+                        <Box sx={{
+                            position: 'relative',
+                            overflow: 'hidden',
+                            borderRadius: 1,
+                            border: '1px solid',
+                            borderColor: 'divider',
+                            bgcolor: 'background.paper'
+                        }}>
+                            <Box
+                                sx={{
+                                    display: 'flex',
+                                    justifyContent: 'center',
+                                    alignItems: 'center',
+                                    bgcolor: '#f5f5f5',
+                                    minHeight: fullscreenScreenshot ? '70vh' : 400,
+                                    maxHeight: fullscreenScreenshot ? '70vh' : 400,
+                                    overflow: 'auto',
+                                    p: fullscreenScreenshot ? 2 : 0
+                                }}
+                            >
+                                <img
+                                    src={screenshotUrl}
+                                    alt="Report Screenshot"
+                                    style={{
+                                        maxWidth: fullscreenScreenshot ? '100%' : 'auto',
+                                        maxHeight: fullscreenScreenshot ? '100%' : 400,
+                                        objectFit: fullscreenScreenshot ? 'contain' : 'scale-down',
+                                        display: 'block'
+                                    }}
+                                    onError={(e) => {
+                                        console.error('Failed to load screenshot:', e);
+                                        const target = e.target as HTMLImageElement;
+                                        target.style.display = 'none';
+                                        // Можно добавить заглушку
+                                    }}
+                                />
+                            </Box>
+
+                            {!screenshotUrl && (
+                                <Box sx={{
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    height: 400,
+                                    color: 'text.secondary'
+                                }}>
+                                    <ImageNotSupported sx={{ fontSize: 60, mb: 2 }} />
+                                    <Typography variant="body1">
+                                        No screenshot available
+                                    </Typography>
+                                </Box>
+                            )}
+                        </Box>
+
+                        {report.currentUrl && (
+                            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                                URL: {report.currentUrl}
+                            </Typography>
+                        )}
+                    </Paper>
+                )}
+
                 {/* Report Details */}
                 <ReportDetailsCard
                     report={report}
@@ -272,6 +417,62 @@ const ReportDetailsPage: React.FC = () => {
                 {/* Events List */}
                 <EventsTable events={events} />
             </Stack>
+
+            {/* Fullscreen Modal for Screenshot */}
+            {fullscreenScreenshot && screenshotUrl && (
+                <Box
+                    sx={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        bgcolor: 'rgba(0, 0, 0, 0.9)',
+                        zIndex: 1300,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        p: 2
+                    }}
+                    onClick={() => setFullscreenScreenshot(false)}
+                >
+                    <Box
+                        sx={{
+                            maxWidth: '90vw',
+                            maxHeight: '90vh',
+                            position: 'relative'
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <img
+                            src={screenshotUrl}
+                            alt="Fullscreen Screenshot"
+                            style={{
+                                maxWidth: '100%',
+                                maxHeight: '90vh',
+                                objectFit: 'contain',
+                                borderRadius: 8
+                            }}
+                        />
+                        <Button
+                            variant="contained"
+                            onClick={() => setFullscreenScreenshot(false)}
+                            sx={{
+                                position: 'absolute',
+                                top: 16,
+                                right: 16,
+                                bgcolor: 'rgba(0, 0, 0, 0.7)',
+                                color: 'white',
+                                '&:hover': {
+                                    bgcolor: 'rgba(0, 0, 0, 0.9)',
+                                }
+                            }}
+                        >
+                            Close
+                        </Button>
+                    </Box>
+                </Box>
+            )}
         </Box>
     );
 };

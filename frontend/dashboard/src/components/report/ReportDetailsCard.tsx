@@ -12,12 +12,18 @@ import {
     InputLabel,
     Select,
     MenuItem,
+    Button,
+    IconButton,
 } from '@mui/material';
 import {
     Person,
     Email,
     Web,
     Schedule,
+    Image,
+    ZoomIn,
+    Download,
+    OpenInNew,
 } from '@mui/icons-material';
 import { Report, ReportStatus, CriticalityLevel } from '../../types/types';
 
@@ -25,8 +31,8 @@ export interface ReportEditData {
     status: ReportStatus;
     criticality: CriticalityLevel;
     comments: string;
-    projectId?: string; // Добавляем
-    developerName?: string; // Добавляем
+    projectId?: string;
+    developerName?: string;
 }
 
 interface ReportDetailsCardProps {
@@ -48,6 +54,7 @@ const ReportDetailsCard: React.FC<ReportDetailsCardProps> = ({
                                                                  getCriticalityColor,
                                                                  getStatusColor,
                                                              }) => {
+
     return (
         <Card>
             <CardContent>
@@ -241,15 +248,6 @@ const ReportDetailsCard: React.FC<ReportDetailsCardProps> = ({
                             </Typography>
                         </Box>
                     )}
-
-                    {report.screen && (
-                        <Box sx={{ gridColumn: 'span 2' }}>
-                            <Typography variant="body2" display="flex" alignItems="center" gap={1} component="div">
-                                <strong>Screen Info:</strong> {report.screen}
-                            </Typography>
-                        </Box>
-                    )}
-
                     <Box>
                         <Typography variant="body2" display="flex" alignItems="center" gap={1} component="div">
                             <Schedule fontSize="small" />

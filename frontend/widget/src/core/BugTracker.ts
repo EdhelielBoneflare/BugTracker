@@ -227,18 +227,52 @@ export class BugTracker {
         element: Element;
         event: Event;
     }): void {
+        const element = action.element as HTMLElement;
+
+        // Collect action-specific attributes
+        const additionalMetadata: Record<string, any> = {};
+
+        try {
+            if (element instanceof HTMLAnchorElement) {
+                additionalMetadata.href = element.href;
+                // Also include target attribute if present
+                if (element.target) additionalMetadata.target = element.target;
+            }
+
+            if (element instanceof HTMLFormElement) {
+                additionalMetadata.action = element.action;
+                additionalMetadata.method = element.method;
+            }
+
+            if (element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement || element instanceof HTMLSelectElement) {
+                additionalMetadata.inputName = (element as HTMLInputElement).name || undefined;
+                additionalMetadata.inputType = (element as HTMLInputElement).type || undefined;
+                // Don't send full values for privacy; truncate to 100 chars
+                additionalMetadata.value = ((element as HTMLInputElement).value ?? '').toString().substring(0, 100);
+            }
+
+            // Include dataset attributes (shallow copy)
+            if (element.dataset && Object.keys(element.dataset).length > 0) {
+                additionalMetadata.dataset = { ...element.dataset };
+            }
+        } catch (e) {
+            // Defensive: accessing some properties may throw in very old or exotic environments
+            console.debug('[BugTracker] Failed to extract element attributes for action metadata:', e);
+        }
+
         const event: InternalEvent = {
             type: 'ACTION' as any,
             name: `User ${action.type}`,
             timestamp: new Date().toISOString(),
             url: window.location.href,
-            tagName: action.element.tagName,
-            xPath: this.getElementXPath(action.element),
+            tagName: element.tagName,
+            xPath: this.getElementXPath(element),
             customMetadata: {
-                elementId: action.element.id,
-                elementClass: action.element.className,
-                textContent: action.element.textContent?.substring(0, 100),
-                eventType: action.event.type
+                elementId: element.id || undefined,
+                elementClass: element.className || undefined,
+                textContent: element.textContent?.substring(0, 100),
+                eventType: action.event.type,
+                ...additionalMetadata
             }
         };
 
@@ -284,27 +318,12 @@ export class BugTracker {
      * Add event to buffer
      */
     private addEvent(event: InternalEvent): void {
-        const apiEvent = {
-            type: event.type,
-            name: event.name,
-            message: event.message,
-            stackTrace: event.stackTrace,
-            timestamp: event.timestamp,
-            url: event.url,
-            metadata: {
-                lineNumber: event.lineNumber,
-                columnNumber: event.columnNumber,
-                fileName: event.fileName,
-                tagName: event.tagName,
-                xPath: event.xPath,
-                networkUrl: event.networkUrl,
-                statusCode: event.statusCode,
-                duration: event.duration,
-                ...event.customMetadata
-            }
-        };
-
-        this.eventBuffer.add(apiEvent);
+        // The EventBuffer expects InternalEvent objects (with `customMetadata`).
+        // Previously we transformed the shape into `metadata` which the Client did not read,
+        // causing `log`, `stackTrace`, and element details to be empty on the server.
+        // Pass the original event through unchanged so the Client can access message,
+        // stackTrace and customMetadata when building the outgoing payload.
+        this.eventBuffer.add(event);
     }
 
     /**
@@ -336,7 +355,23 @@ export class BugTracker {
      */
     private async openBugReport(): Promise<void> {
         // Import dynamically to reduce initial bundle size
-        const { BugReportModal } = await import('../ui/BugReportModal');
+        let BugReportModalModule;
+        try {
+            BugReportModalModule = await import('../ui/BugReportModal');
+        } catch (e) {
+            // Log the error, emit a lightweight internal event and abort opening modal
+            console.error('[BugTracker] Failed to load BugReportModal chunk:', e);
+            try {
+                // Track a custom event so integrators see the failure in their dashboards if events are sent
+                this.trackEvent('BugReportModalLoadFailed', { error: e instanceof Error ? e.message : String(e) });
+            } catch (err) {
+                // swallow - we don't want tracking failure to throw
+                console.debug('[BugTracker] Failed to track BugReportModalLoadFailed:', err);
+            }
+            return;
+        }
+
+        const { BugReportModal } = BugReportModalModule;
 
         const modal = new BugReportModal(
             async (report) => {
@@ -356,11 +391,35 @@ export class BugTracker {
                     this.sessionManager.getSessionData()
                 );
 
-                // Track as custom event
+                // Track as custom event (attach to the session that submitted the report)
                 this.trackEvent('BugReportSubmitted', {
                     hasScreenshot: !!report.screenshot,
                     commentLength: report.comment.length
                 });
+
+                // Flush this event so it's definitely sent for the session that just reported
+                try {
+                    await this.eventBuffer.flush();
+                } catch (e) {
+                    console.error('[BugTracker] Failed to flush events after BugReportSubmitted:', e);
+                    // continue - we'll still attempt to end and recreate session
+                }
+
+                // End the current session and immediately create a fresh one
+                try {
+                    if (this.config.debug) console.log('[BugTracker] ending current session after report...');
+                    this.sessionManager.endSession();
+                } catch (e) {
+                    console.error('[BugTracker] Failed to end session after report:', e);
+                }
+
+                try {
+                    if (this.config.debug) console.log('[BugTracker] creating new session after report...');
+                    const newLocalId = this.sessionManager.initialize();
+                    if (this.config.debug) console.log('[BugTracker] new session id:', newLocalId);
+                } catch (e) {
+                    console.error('[BugTracker] Failed to create a new session after report:', e);
+                }
 
                 if (this.config.debug) {
                     console.log('Bug report sent successfully');
