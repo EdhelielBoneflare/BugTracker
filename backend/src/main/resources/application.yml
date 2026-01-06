@@ -30,3 +30,9 @@ springdoc:
     path: /swagger-ui.html
     operations-sorter: method
     tags-sorter: alpha
+
+# CORS: можно настроить список разрешённых origin через свойство app.cors.allowed-origins
+# Пример (comma-separated):
+app:
+  cors:
+    allowed-origins: "https://edhelielboneflare.github.io,http://localhost:*"

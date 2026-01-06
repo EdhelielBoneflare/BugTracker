@@ -1,6 +1,7 @@
 package uni.bugtracker.backend.config;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -25,7 +26,9 @@ import uni.bugtracker.backend.security.CustomAuthEntryPoint;
 import uni.bugtracker.backend.security.filter.JwtAuthenticationFilter;
 import uni.bugtracker.backend.security.service.CustomUserDetailsService;
 
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Configuration
 @EnableWebSecurity
@@ -38,6 +41,9 @@ public class SecurityConfig {
 
     private final CustomAuthEntryPoint authEntryPoint;
     private final CustomAccessDeniedHandler accessDeniedHandler;
+
+    @Value("${app.cors.allowed-origins:}")
+    private String allowedOriginsProperty;
 
 
     @Bean
@@ -85,27 +91,28 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
 
-        // Вариант DEV без привязки к портам (паттерны с подстановками):
-        config.setAllowedOriginPatterns(List.of(
-                "http://localhost:*",
-                "http://127.0.0.1:*",
-                "https://localhost:*",
-                "https://127.0.0.1:*"
-        ));
-
-/*        config.setAllowedOrigins(List.of(
-                "http://localhost:63342", // IDE
-                "http://localhost:8080"   // если UI лежит в static
-        ));*/
+        // Если в application.yml прописаны allowed origins - используем их
+        if (allowedOriginsProperty != null && !allowedOriginsProperty.isBlank()) {
+            List<String> origins = Arrays.stream(allowedOriginsProperty.split(","))
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .collect(Collectors.toList());
+            config.setAllowedOrigins(origins);
+        } else {
+            // DEV fallback: разрешаем локальные origin с любым портом
+            config.setAllowedOriginPatterns(List.of(
+                    "http://localhost:*",
+                    "http://127.0.0.1:*",
+                    "https://localhost:*",
+                    "https://127.0.0.1:*"
+            ));
+        }
 
         config.setAllowedMethods(List.of("GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setExposedHeaders(List.of("*"));
+        // Для cookie-based auth может потребоваться true; с JWT обычно достаточно false
         config.setAllowCredentials(false);
-
-        // Для более строгого PROD:
-        // - в application-prod.yml положить список доменов и подставлять здесь через @Value
-        // - и/или использовать только setAllowedOrigins(List.of("https://app.example.com"))
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
