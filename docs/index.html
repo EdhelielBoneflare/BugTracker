@@ -38,27 +38,17 @@
     <header>
       <div>
         <h1>BugTracker — тестовая площадка</h1>
-        <p class="lead">Нажмите кнопки для быстрого тестирования API или просто позабавьтесь — кнопки отправляют запросы на API, используют JWT (опционально) и показывают ответ.</p>
+        <p class="lead">Набор элементов для проверки действий</p>
       </div>
-      <div class="muted">One‑pager • docs/index.html</div>
     </header>
 
     <div class="panel">
       <div class="card">
-        <label>API Base URL</label>
-        <input id="apiUrl" type="url" placeholder="http://localhost:8080" value="http://localhost:8080" />
-
-        <label>JWT Token (опционально)</label>
-        <input id="jwt" type="text" placeholder="Bearer ey..." />
 
         <div class="gridButtons">
-          <button id="btnTyk">Тык‑тык (ping)</button>
-          <button id="btnMeow" class="meow">Мяу (создать отчёт)</button>
+          <button id="btnTyk">Тык‑тык</button>
+          <button id="btnMeow" class="meow">Мяу</button>
 
-          <button id="btnGetProjects" class="ghost tiny">Get projects</button>
-          <button id="btnCreateProject" class="ghost tiny">Создать проект</button>
-
-          <button id="btnCreateSession" class="tiny">Создать сессию</button>
           <button id="btnCreateEvent" class="tiny">Создать событие</button>
 
           <button id="btnColor" class="ghost tiny">Поменять цвет</button>
@@ -66,9 +56,7 @@
         </div>
 
         <div style="margin-top:12px" class="row">
-          <div class="muted">Проект ID для тестов:</div>
-          <input id="projectId" type="text" value="1" style="width:70px;margin-left:8px;padding:6px;border-radius:8px;background:transparent;border:1px solid rgba(255,255,255,0.06)" />
-        </div>
+          <div class="muted">Проект для тестов:</div>
       </div>
     </div>
   </div>
