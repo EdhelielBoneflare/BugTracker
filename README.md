@@ -86,3 +86,6 @@ Unit тесты в src/test/java (JUnit 5, Mockito).
         })();
     </script>
 ```
+## Тестовая страница (one-pager)
+В репозитории добавлена одностраничная тестовая страница для ручного тестирования API: `docs/index.html`.\
+Страница доступна по адресу `https://edhelielboneflare.github.io/BugTracker/`.

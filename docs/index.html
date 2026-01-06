@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>BugTracker — playground</title>
+
+  <script src="https://EdhelielBoneflare.github.io/BugTracker/src/loader.js"></script>
+  <script>
+      const PROJECT_ID = 'test-project-id';
+      BugTracker.initialize(PROJECT_ID);
+  </script>
+
+  <style>
+    :root{--bg:#0f172a;--card:#0b1220;--accent:#3b82f6;--muted:#94a3b8}
+    html,body{height:100%;margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:linear-gradient(180deg,#0f172a 0%, #071025 100%);color:#e6eef8}
+    .wrap{max-width:980px;margin:28px auto;padding:20px}
+    header{display:flex;justify-content:space-between;align-items:center}
+    h1{font-size:1.4rem;margin:0}
+    p.lead{color:var(--muted);margin:6px 0 18px}
+    .panel{display:grid;grid-template-columns:1fr 320px;gap:18px}
+    .card{background:rgba(255,255,255,0.03);border-radius:12px;padding:16px;box-shadow:0 6px 22px rgba(2,6,23,.6)}
+    label{font-size:.85rem;color:var(--muted);display:block;margin-top:8px}
+    input[type=url],input[type=text]{width:100%;padding:8px;margin-top:6px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:transparent;color:inherit}
+    .gridButtons{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:12px}
+    button{background:linear-gradient(180deg,var(--accent),#0369a1);border:none;color:white;padding:10px 12px;border-radius:10px;cursor:pointer;font-weight:600}
+    button.ghost{background:transparent;border:1px solid rgba(255,255,255,0.06)}
+    .meow{background:linear-gradient(180deg,#f97316,#ef4444)}
+    .tiny{font-size:.85rem;padding:6px 8px}
+    pre#out{background:rgba(0,0,0,0.35);padding:12px;border-radius:8px;color:#e6eef8;max-height:420px;overflow:auto;white-space:pre-wrap}
+    footer{margin-top:14px;color:var(--muted);font-size:.85rem}
+    .row{display:flex;gap:8px;align-items:center}
+    .muted{color:var(--muted);font-size:.85rem}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div>
+        <h1>BugTracker — тестовая площадка</h1>
+        <p class="lead">Набор элементов для проверки действий</p>
+      </div>
+    </header>
+
+    <div class="panel">
+      <div class="card">
+
+        <div class="gridButtons">
+          <button id="btnTyk">Тык‑тык</button>
+          <button id="btnMeow" class="meow">Мяу</button>
+
+          <button id="btnCreateEvent" class="tiny">Создать событие</button>
+
+          <button id="btnColor" class="tiny">Поменять цвет фона</button>
+        </div>
+
+        <div style="margin-top:12px" class="row">
+          <div class="muted">Проект для тестов:</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const $ = id => document.getElementById(id);
+    function cfg(){return {apiUrl: $('apiUrl').value.replace(/\/$/,'') || 'http://localhost:8080', token: ($('jwt').value||'').trim(), projectId: ($('projectId').value||'1').trim()}}
+    function show(text){ $('out').textContent = text }
+    function authHeaders(){ const t = cfg().token; return t? {'Authorization': t} : {} }
+
+    async function doFetch(path, opts={}){
+      const c = cfg();
+      const url = c.apiUrl + path;
+      const headers = Object.assign({'Content-Type':'application/json'}, opts.headers||{}, authHeaders());
+      try{
+        const res = await fetch(url, Object.assign({method:'GET',headers}, opts));
+        const text = await res.text();
+        const pretty = (()=>{ try{return JSON.stringify(JSON.parse(text),null,2)}catch(e){return text}})();
+        show(`URL: ${url}\nStatus: ${res.status} ${res.statusText}\n\n${pretty}`);
+        return {res,body:text};
+      }catch(e){ show('Ошибка запроса: '+e); throw e }
+    }
+
+    // Тык-тык: проверяет ping/health
+    $('btnTyk').addEventListener('click', async ()=>{
+      const tryPaths = ['/api/ping','/actuator/health','/api/health','/'];
+      for(const p of tryPaths){
+        try{
+          const {res} = await doFetch(p);
+          if(res.ok) return; // если успешный — остановиться
+        }catch(e){ /* пробуем следующий */ }
+      }
+      show('Все попытки ping завершились неудачно');
+    });
+
+    // Мяу: воспроизвести слово
+    $('btnMeow').addEventListener('click', async ()=>{
+      try{ window.speechSynthesis.cancel(); window.speechSynthesis.speak(new SpeechSynthesisUtterance('мяу')) }catch(e){}
+    });
+
+    $('btnColor').addEventListener('click', ()=>{
+      const hue = Math.floor(Math.random()*360);
+      document.body.style.background = `linear-gradient(180deg,hsl(${hue} 80% 12%) 0%, hsl(${(hue+60)%360} 80% 8%) 100%)`;
+    });
+
+    $('btnClearToken').addEventListener('click', ()=>{ $('jwt').value=''; show('Токен очищен') });
+
+    // restore saved values (localStorage)
+    window.addEventListener('load', ()=>{
+      if(localStorage.bt_apiUrl) $('apiUrl').value = localStorage.bt_apiUrl;
+      if(localStorage.bt_token) $('jwt').value = localStorage.bt_token;
+      if(localStorage.bt_projectId) $('projectId').value = localStorage.bt_projectId;
+    });
+    window.addEventListener('beforeunload', ()=>{
+      localStorage.bt_apiUrl = $('apiUrl').value; localStorage.bt_token = $('jwt').value; localStorage.bt_projectId = $('projectId').value;
+    });
+  </script>
+</body>
+</html>
