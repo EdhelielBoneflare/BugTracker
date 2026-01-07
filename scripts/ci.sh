@@ -52,18 +52,6 @@ if [ -d "frontend/widget" ]; then
     echo "Building widget..."
     if npm run build 2>/dev/null || npm run build:prod 2>/dev/null; then
         echo "Widget built successfully!"
-
-        # Проверяем собранный файл
-        if [ -f "dist/bugtracker.js" ] || [ -f "dist/main.js" ] || [ -f "dist/widget.js" ]; then
-            echo "Widget JS file created"
-            ls -la dist/
-
-            # Копируем в docs для тестовой страницы
-            if [ -d "../../docs" ]; then
-                echo "Copying widget to docs folder for testing..."
-                cp dist/*.js ../../docs/ 2>/dev/null || true
-            fi
-        fi
     else
         echo "Warning: Widget build might have failed or no build script found"
         echo "Continuing anyway..."
@@ -89,13 +77,13 @@ else
     exit 1
 fi
 
-# Запускаем всё (без виджета как сервиса)
+# Запускаем всё
 echo "Starting services..."
 docker-compose -f docker-compose.ci.yml up -d
 
 echo ""
-echo "Waiting for services to start (30 seconds)..."
-sleep 30
+echo "Waiting for services to start (20 seconds)..."
+sleep 20
 
 # Проверяем статус
 echo ""
@@ -112,8 +100,9 @@ if docker-compose -f docker-compose.ci.yml ps | grep -q "Up"; then
 
     echo ""
     echo "Access URLs:"
-    echo "   Swagger UI:      http://localhost:8080/swagger-ui.html"
-    echo "   Dashboard:       http://localhost:3000"
+    echo "   Swagger UI:       http://localhost:8080/swagger-ui.html"
+    echo "   Dashboard:        http://localhost:3000"
+    echo "   Widget test page: https://edhelielboneflare.github.io/BugTracker/"
 
     # Проверяем доступность
     echo ""
@@ -147,8 +136,11 @@ else
 fi
 
 echo ""
-echo "View logs:"
-echo "   docker-compose -f docker-compose.ci.yml logs -f"
+echo "View logs: docker-compose -f docker-compose.ci.yml logs -f"
 echo ""
 echo "To stop: docker-compose -f docker-compose.ci.yml down"
 echo ""
+echo "To make user an admin (default role is DEVELOPER):"
+echo "docker exec bugtracker-postgres-1 psql -U your_name -d your_db_name -c \"UPDATE user_dev SET role = 'ADMIN' WHERE username = 'username_you_register';\""
+echo ""
+echo "where your_name - db owner, your_db_name - db name, username_you_register - username of user you want to change role"
