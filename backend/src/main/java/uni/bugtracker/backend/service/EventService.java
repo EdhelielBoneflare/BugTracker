@@ -49,7 +49,6 @@ public class EventService {
             metadata.setStatusCode(request.getMetadata().getStatusCode());
             event.setMetadata(metadata);
         }
-        System.out.println("LOG: " + request.getLog());
 
         return eventRepository.save(event).getId();
     }
