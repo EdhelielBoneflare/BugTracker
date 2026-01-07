@@ -2,11 +2,9 @@
 FROM gradle:8.14-jdk21-alpine AS build
 WORKDIR /app
 
-# Копируем всё
 COPY . .
 
-# Собираем
-RUN gradle build -x test --no-daemon
+RUN gradle build --no-daemon
 
 # Runtime stage
 FROM eclipse-temurin:21-jre-alpine

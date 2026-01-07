@@ -19,7 +19,6 @@ import {
 } from '@mui/icons-material';
 import { api } from '../api/Api';
 import { Report, ReportStatus, CriticalityLevel } from '../types/types';
-import { useAuth } from '../contexts/AuthContext';
 import ReportsFilter from '../components/report/ReportsFilter';
 import ReportsStats from '../components/report/ReportsStats';
 import ReportsTable from '../components/report/ReportsTable';
@@ -28,7 +27,6 @@ import EditReportDialog from '../components/report/EditReportDialog';
 const ProjectReportsPage: React.FC = () => {
     const { projectId } = useParams<{ projectId: string }>();
     const navigate = useNavigate();
-    const { isAdmin } = useAuth();
     const [reports, setReports] = useState<Report[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -38,16 +36,11 @@ const ProjectReportsPage: React.FC = () => {
     const [editingReport, setEditingReport] = useState<Report | null>(null);
     const [editData, setEditData] = useState({
         status: ReportStatus.NEW,
-        criticality: CriticalityLevel.UNKNOWN,
+        level: CriticalityLevel.UNKNOWN,
         comments: '',
-        projectId: '', // Добавляем
-        developerName: '', // Добавляем
+        projectId: '',
+        developerName: '',
     });
-
-    // Функция проверки прав - только админ может редактировать/удалять
-    const canEditReport = () => {
-        return isAdmin();
-    };
 
     useEffect(() => {
         if (projectId) {
@@ -62,12 +55,11 @@ const ProjectReportsPage: React.FC = () => {
 
             let filteredReports = response.content.map((report: any) => ({
                 ...report,
-                criticality: report.level || CriticalityLevel.UNKNOWN,
+                level: report.level || CriticalityLevel.UNKNOWN,
                 comments: report.comments || '',
                 developerName: report.developerName || null,
             }));
 
-            // Фильтрация на клиенте
             if (filterStatus !== 'ALL') {
                 filteredReports = filteredReports.filter(report =>
                     report.status === filterStatus
@@ -76,7 +68,7 @@ const ProjectReportsPage: React.FC = () => {
 
             if (filterCriticality !== 'ALL') {
                 filteredReports = filteredReports.filter(report =>
-                    report.criticality === filterCriticality
+                    report.level === filterCriticality
                 );
             }
 
@@ -107,22 +99,22 @@ const ProjectReportsPage: React.FC = () => {
         }
     };
 
-    const getCriticalityLabel = (criticality: CriticalityLevel | undefined | null) => {
-        if (!criticality || criticality === CriticalityLevel.UNKNOWN) return 'Unknown';
+    const getCriticalityLabel = (level: CriticalityLevel | undefined | null) => {
+        if (!level || level === CriticalityLevel.UNKNOWN) return 'Unknown';
 
-        switch(criticality) {
+        switch(level) {
             case CriticalityLevel.CRITICAL: return 'Critical';
             case CriticalityLevel.HIGH: return 'High';
             case CriticalityLevel.MEDIUM: return 'Medium';
             case CriticalityLevel.LOW: return 'Low';
-            default: return String(criticality);
+            default: return String(level);
         }
     };
 
-    const getCriticalityColor = (criticality: CriticalityLevel | undefined | null) => {
-        if (!criticality || criticality === CriticalityLevel.UNKNOWN) return 'default';
+    const getCriticalityColor = (level: CriticalityLevel | undefined | null) => {
+        if (!level || level === CriticalityLevel.UNKNOWN) return 'default';
 
-        switch(criticality) {
+        switch(level) {
             case CriticalityLevel.CRITICAL: return 'error';
             case CriticalityLevel.HIGH: return 'error';
             case CriticalityLevel.MEDIUM: return 'warning';
@@ -150,10 +142,10 @@ const ProjectReportsPage: React.FC = () => {
         setEditingReport(report);
         setEditData({
             status: report.status,
-            criticality: report.criticality || CriticalityLevel.UNKNOWN,
+            level: report.level || CriticalityLevel.UNKNOWN,
             comments: report.comments || '',
-            projectId: report.projectId || '', // Добавляем
-            developerName: report.developerName || '', // Добавляем
+            projectId: report.projectId || '',
+            developerName: report.developerName || '',
         });
         setOpenEditDialog(true);
     };
@@ -164,10 +156,10 @@ const ProjectReportsPage: React.FC = () => {
         try {
             await api.updateReportDashboard(editingReport.id, {
                 status: editData.status,
-                criticality: editData.criticality,
+                level: editData.level,
                 comments: editData.comments,
-                projectId: editData.projectId || undefined, // Добавляем
-                developerName: editData.developerName || undefined, // Добавляем
+                projectId: editData.projectId || undefined,
+                developerName: editData.developerName || undefined,
             });
             setOpenEditDialog(false);
             setEditingReport(null);
@@ -244,7 +236,6 @@ const ProjectReportsPage: React.FC = () => {
             ) : (
                 <ReportsTable
                     reports={reports}
-                    canEditReport={canEditReport()}
                     onViewDetails={handleViewDetails}
                     onEditClick={handleEditClick}
                     onDeleteReport={handleDeleteReport}
@@ -255,16 +246,16 @@ const ProjectReportsPage: React.FC = () => {
                 />
             )}
 
-            {/* Диалог редактирования репорта - только для админа */}
-            {canEditReport() && (
-                <EditReportDialog
-                    open={openEditDialog}
-                    editingReport={editingReport}
-                    editData={editData}
-                    onClose={() => setOpenEditDialog(false)}
-                    onUpdate={handleUpdateReport}
-                    onEditDataChange={handleEditDataChange}
-                />
+            {/* Диалог редактирования репорта*/}
+            {(
+            <EditReportDialog
+                open={openEditDialog}
+                editingReport={editingReport}
+                editData={editData}
+                onClose={() => setOpenEditDialog(false)}
+                onUpdate={handleUpdateReport}
+                onEditDataChange={handleEditDataChange}
+            />
             )}
         </Box>
     );

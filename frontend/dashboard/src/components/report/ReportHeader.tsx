@@ -16,7 +16,6 @@ import { Report } from '../../types/types';
 interface ReportHeaderProps {
     report: Report;
     editing: boolean;
-    canEditReport: boolean;
     onBack: () => void;
     onEdit: () => void;
     onSave: () => void;
@@ -26,7 +25,6 @@ interface ReportHeaderProps {
 const ReportHeader: React.FC<ReportHeaderProps> = ({
                                                        report,
                                                        editing,
-                                                       canEditReport,
                                                        onBack,
                                                        onEdit,
                                                        onSave,
@@ -46,7 +44,7 @@ const ReportHeader: React.FC<ReportHeaderProps> = ({
                 </Typography>
             </Stack>
 
-            {canEditReport && (
+            {(
                 <Stack direction="row" spacing={1}>
                     {!editing ? (
                         <Button

@@ -10,7 +10,7 @@ import {
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import '../styles/AuthPage.css';
+import '../styles/styles.css';
 
 const LoginPage: React.FC = () => {
     const [activeTab, setActiveTab] = useState(0);
