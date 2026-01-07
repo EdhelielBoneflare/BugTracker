@@ -1,23 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import {
-    Box,
-    CircularProgress,
-    Alert,
-    Stack,
-    Paper,
-    Typography,
-    Button,
-} from '@mui/material';
-import {
-    ZoomIn,
-    Fullscreen,
-    Download,
-    ImageNotSupported
-} from '@mui/icons-material';
-import { api } from '../api/Api';
-import { Report, Session, Event, ReportStatus, CriticalityLevel } from '../types/types';
-import { useAuth } from '../contexts/AuthContext';
+import React, {useEffect, useState} from 'react';
+import {useNavigate, useParams} from 'react-router-dom';
+import {Alert, Box, Button, CircularProgress, Paper, Stack, Typography,} from '@mui/material';
+import {ImageNotSupported, ZoomIn} from '@mui/icons-material';
+import {api} from '../api/Api';
+import {CriticalityLevel, Event, Report, ReportStatus, Session} from '../types/types';
+import {useAuth} from '../contexts/AuthContext';
 import ReportHeader from '../components/report/ReportHeader';
 import ReportDetailsCard from '../components/report/ReportDetailsCard';
 import SessionDetailsCard from '../components/report/SessionDetailsCard';
@@ -37,25 +24,11 @@ const ReportDetailsPage: React.FC = () => {
     const [fullscreenScreenshot, setFullscreenScreenshot] = useState(false);
     const [editData, setEditData] = useState({
         status: ReportStatus.NEW,
-        criticality: CriticalityLevel.UNKNOWN,
+        level: CriticalityLevel.UNKNOWN,
         comments: '',
         projectId: '',
         developerName: '',
     });
-
-    const canEditReport = () => {
-        return isAdmin();
-    };
-
-    const normalizeCriticality = (data: any): CriticalityLevel => {
-        if (data.criticality && Object.values(CriticalityLevel).includes(data.criticality)) {
-            return data.criticality;
-        }
-        if (data.level && Object.values(CriticalityLevel).includes(data.level)) {
-            return data.level;
-        }
-        return CriticalityLevel.UNKNOWN;
-    };
 
     useEffect(() => {
         if (reportId) {
@@ -70,7 +43,7 @@ const ReportDetailsPage: React.FC = () => {
 
             const processedReport = {
                 ...reportData,
-                criticality: normalizeCriticality(reportData),
+                level: reportData.level || CriticalityLevel.UNKNOWN,
                 developerName: reportData.developerName || (reportData as any)?.developerName || null,
                 status: reportData.status || ReportStatus.NEW,
                 comments: reportData.comments || '',
@@ -78,7 +51,6 @@ const ReportDetailsPage: React.FC = () => {
                 userProvided: Boolean(reportData.userProvided || (reportData as any)?.userProvided || false),
                 sessionId: reportData.sessionId || (reportData as any)?.sessionId || null,
                 currentUrl: reportData.currentUrl || (reportData as any)?.currentUrl || '',
-                // Получаем URL скриншота из DTO
                 screenUrl: reportData.screenUrl || (reportData as any)?.screenUrl || null,
                 tags: reportData.tags || (reportData as any)?.tags || [],
             };
@@ -88,22 +60,19 @@ const ReportDetailsPage: React.FC = () => {
 
             setReport(processedReport as Report);
 
-            // Если есть URL скриншота, создаем полный URL
             if (processedReport.screenUrl) {
-                // Если URL относительный, добавляем базовый URL
                 if (processedReport.screenUrl.startsWith('/')) {
                     setScreenshotUrl(`http://localhost:8080${processedReport.screenUrl}`);
                 } else {
                     setScreenshotUrl(processedReport.screenUrl);
                 }
             } else if (processedReport.id) {
-                // Формируем URL для получения скриншота
                 setScreenshotUrl(`http://localhost:8080/api/reports/${processedReport.id}/screenshot`);
             }
 
             setEditData({
                 status: processedReport.status,
-                criticality: normalizeCriticality(processedReport),
+                level: processedReport.level,
                 comments: processedReport.comments,
                 projectId: processedReport.projectId || '',
                 developerName: processedReport.developerName || '',
@@ -157,35 +126,6 @@ const ReportDetailsPage: React.FC = () => {
         }
     };
 
-    // Функция для скачивания скриншота
-    const handleDownloadScreenshot = async () => {
-        if (!report?.id) return;
-
-        try {
-            const response = await fetch(`http://localhost:8080/api/reports/${report.id}/screenshot`, {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`,
-                }
-            });
-
-            if (response.ok) {
-                const blob = await response.blob();
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `screenshot-report-${report.id}.png`;
-                document.body.appendChild(a);
-                a.click();
-                window.URL.revokeObjectURL(url);
-                document.body.removeChild(a);
-            }
-        } catch (error) {
-            console.error('Failed to download screenshot:', error);
-            setError('Failed to download screenshot');
-        }
-    };
-
     const getCriticalityColor = (criticality: CriticalityLevel) => {
         switch(criticality) {
             case CriticalityLevel.CRITICAL: return 'error';
@@ -196,13 +136,13 @@ const ReportDetailsPage: React.FC = () => {
         }
     };
 
-    const getCriticalityLabel = (criticality: CriticalityLevel) => {
-        switch(criticality) {
+    const getCriticalityLabel = (level: CriticalityLevel) => {
+        switch(level) {
             case CriticalityLevel.CRITICAL: return 'Critical';
             case CriticalityLevel.HIGH: return 'High';
             case CriticalityLevel.MEDIUM: return 'Medium';
             case CriticalityLevel.LOW: return 'Low';
-            default: return String(criticality);
+            default: return String(level);
         }
     };
 
@@ -221,7 +161,7 @@ const ReportDetailsPage: React.FC = () => {
         try {
             const updatedReport = await api.updateReportDashboard(report.id, {
                 status: editData.status,
-                criticality: editData.criticality,
+                level: editData.level,
                 comments: editData.comments,
                 projectId: editData.projectId || undefined,
                 developerName: editData.developerName || undefined,
@@ -229,7 +169,7 @@ const ReportDetailsPage: React.FC = () => {
 
             const processedReport = {
                 ...updatedReport,
-                criticality: normalizeCriticality(updatedReport),
+                level: updatedReport.level,
             };
 
             setReport(processedReport as Report);
@@ -244,7 +184,7 @@ const ReportDetailsPage: React.FC = () => {
         if (!report) return;
         setEditData({
             status: report.status || ReportStatus.NEW,
-            criticality: normalizeCriticality(report),
+            level: report.level || CriticalityLevel.UNKNOWN,
             comments: report.comments || '',
             projectId: report.projectId || '',
             developerName: report.developerName || '',
@@ -285,7 +225,6 @@ const ReportDetailsPage: React.FC = () => {
             <ReportHeader
                 report={report}
                 editing={editing}
-                canEditReport={canEditReport()}
                 onBack={() => navigate(-1)}
                 onEdit={() => setEditing(true)}
                 onSave={handleSave}
@@ -314,14 +253,6 @@ const ReportDetailsPage: React.FC = () => {
                                     sx={{ mr: 1 }}
                                 >
                                     {fullscreenScreenshot ? 'Normal View' : 'Zoom In'}
-                                </Button>
-                                <Button
-                                    startIcon={<Download />}
-                                    onClick={handleDownloadScreenshot}
-                                    size="small"
-                                    variant="outlined"
-                                >
-                                    Download
                                 </Button>
                             </Box>
                         </Box>
@@ -359,7 +290,6 @@ const ReportDetailsPage: React.FC = () => {
                                         console.error('Failed to load screenshot:', e);
                                         const target = e.target as HTMLImageElement;
                                         target.style.display = 'none';
-                                        // Можно добавить заглушку
                                     }}
                                 />
                             </Box>

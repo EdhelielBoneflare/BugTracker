@@ -38,7 +38,7 @@ export interface Report {
     id: number;
     title: string;
     comments?: string;
-    criticality: CriticalityLevel;
+    level: CriticalityLevel;
     currentUrl?: string;
     reportedAt: string;
     screenUrl: string | null;

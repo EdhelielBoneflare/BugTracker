@@ -20,19 +20,17 @@ import { Report, ReportStatus, CriticalityLevel } from '../../types/types';
 
 interface ReportsTableProps {
     reports: Report[];
-    canEditReport: boolean;
     onViewDetails: (reportId: number) => void;
     onEditClick: (report: Report) => void;
     onDeleteReport: (reportId: number) => void;
     getStatusIcon: (status: ReportStatus) => React.ReactElement; // Исправляем тип
     getStatusColor: (status: ReportStatus) => string;
-    getCriticalityLabel: (criticality: CriticalityLevel | undefined | null) => string;
-    getCriticalityColor: (criticality: CriticalityLevel | undefined | null) => string;
+    getCriticalityLabel: (level: CriticalityLevel | undefined | null) => string;
+    getCriticalityColor: (level: CriticalityLevel | undefined | null) => string;
 }
 
 const ReportsTable: React.FC<ReportsTableProps> = ({
                                                        reports,
-                                                       canEditReport,
                                                        onViewDetails,
                                                        onEditClick,
                                                        onDeleteReport,
@@ -80,11 +78,11 @@ const ReportsTable: React.FC<ReportsTableProps> = ({
                                 </Tooltip>
                             </TableCell>
                             <TableCell>
-                                <Tooltip title={getCriticalityLabel(report.criticality)}>
+                                <Tooltip title={getCriticalityLabel(report.level)}>
                                     <Chip
-                                        label={getCriticalityLabel(report.criticality)}
+                                        label={getCriticalityLabel(report.level)}
                                         size="small"
-                                        color={getCriticalityColor(report.criticality) as any}
+                                        color={getCriticalityColor(report.level) as any}
                                         variant="outlined"
                                     />
                                 </Tooltip>
@@ -108,7 +106,7 @@ const ReportsTable: React.FC<ReportsTableProps> = ({
                                         View
                                     </Button>
 
-                                    {canEditReport && (
+                                    {(
                                         <>
                                             <Button
                                                 size="small"

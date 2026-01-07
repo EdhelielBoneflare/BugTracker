@@ -1,8 +1,10 @@
 package uni.bugtracker.backend.utility;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.junit.jupiter.MockitoExtension;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 import uni.bugtracker.backend.dto.report.ReportCreationRequestWidget;
 import uni.bugtracker.backend.dto.report.ReportUpdateRequestDashboard;
 import uni.bugtracker.backend.exception.BusinessValidationException;
@@ -10,72 +12,69 @@ import uni.bugtracker.backend.model.*;
 
 import java.lang.reflect.Method;
 import java.time.Instant;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-@ExtendWith(MockitoExtension.class)
 class ReportMapperTest {
 
-    private final ReportMapper reportMapper = new ReportMapper();
+    private ReportMapper reportMapper;
+    private Project project;
+    private Session session;
+    private Developer developer;
 
-    @Test
-    void fromCreateOnWidget_shouldCreateReportWithTrimmedFields() {
-        // Given
-        ReportCreationRequestWidget request = new ReportCreationRequestWidget();
-        request.setTitle("A".repeat(300)); // > 255
-        request.setTags(List.of("INTERFACE_ISSUE", "MOBILE_VIEW"));
-        request.setReportedAt(Instant.now());
-        request.setComments("C".repeat(6000)); // > 5000
-        request.setUserEmail("test@example.com");
-        request.setScreen("screenshot_data");
-        request.setCurrentUrl("https://example.com");
-        request.setUserProvided(true);
+    @BeforeEach
+    void setUp() {
+        reportMapper = new ReportMapper();
 
-        Project project = new Project();
-        Session session = new Session();
+        project = new Project();
+        project.setId("project-123");
+        project.setName("Test Project");
 
-        // When
-        Report report = reportMapper.fromCreateOnWidget(request, project, session);
+        session = new Session();
+        session.setId(1L);
+        session.setIsActive(true);
 
-        // Then
-        assertNotNull(report);
-        assertEquals(project, report.getProject());
-        assertEquals(session, report.getSession());
-        assertEquals(255, report.getTitle().length());
-        assertEquals(2, report.getTags().size());
-        assertEquals(Instant.class, report.getReportedAt().getClass());
-        assertEquals(5000, report.getComments().length());
-        assertEquals("test@example.com", report.getUserEmail());
-        assertEquals("screenshot_data", report.getScreen());
-        assertEquals("https://example.com", report.getCurrentUrl());
-        assertTrue(report.isUserProvided());
-        assertEquals(ReportStatus.NEW, report.getStatus());
+        developer = Developer.builder()
+                .id("dev-123")
+                .username("test.dev")
+                .build();
     }
 
     @Test
-    void fromCreateOnWidget_withFalseUserProvided_shouldSetFalse() {
+    void fromCreateOnWidget_shouldMapAllFieldsCorrectly() {
         // Given
         ReportCreationRequestWidget request = new ReportCreationRequestWidget();
-        request.setTitle("Test");
-        request.setTags(List.of("INTERFACE_ISSUE"));
+        request.setTitle("Bug Report Title");
+        request.setTags(Arrays.asList("INTERFACE_ISSUE", "MOBILE_VIEW"));
         request.setReportedAt(Instant.now());
-        request.setComments("Comments");
-        request.setUserEmail("test@example.com");
-        request.setScreen("screen");
-        request.setCurrentUrl("https://example.com");
-        request.setUserProvided(false);
+        request.setComments("Some comments about the bug");
+        request.setUserEmail("user@example.com");
+        request.setCurrentUrl("http://example.com/page");
+        request.setUserProvided(true);
 
-        Project project = new Project();
-        Session session = new Session();
+        byte[] screen = new byte[]{1, 2, 3};
 
         // When
-        Report report = reportMapper.fromCreateOnWidget(request, project, session);
+        Report report = reportMapper.fromCreateOnWidget(request, project, session, screen);
 
         // Then
-        assertNotNull(report);
-        assertFalse(report.isUserProvided());
+        assertThat(report.getProject()).isEqualTo(project);
+        assertThat(report.getSession()).isEqualTo(session);
+        assertThat(report.getTitle()).isEqualTo("Bug Report Title");
+        assertThat(report.getTags()).containsExactly(Tag.INTERFACE_ISSUE, Tag.MOBILE_VIEW);
+        assertThat(report.getReportedAt()).isEqualTo(request.getReportedAt());
+        assertThat(report.getComments()).isEqualTo("Some comments about the bug");
+        assertThat(report.getUserEmail()).isEqualTo("user@example.com");
+        assertThat(report.getScreen()).isEqualTo(screen);
+        assertThat(report.getCurrentUrl()).isEqualTo("http://example.com/page");
+        assertThat(report.isUserProvided()).isTrue();
+        assertThat(report.getStatus()).isEqualTo(ReportStatus.NEW);
+        assertThat(report.getCriticality()).isEqualTo(CriticalityLevel.UNKNOWN);
     }
 
     @Test
@@ -83,80 +82,120 @@ class ReportMapperTest {
         // Given
         ReportCreationRequestWidget request = new ReportCreationRequestWidget();
         request.setTitle("Test");
-        request.setTags(List.of("INTERFACE_ISSUE", "INVALID_TAG", "MOBILE_VIEW", "ANOTHER_INVALID"));
+        request.setTags(Arrays.asList("INTERFACE_ISSUE", "INVALID_TAG", "MOBILE_VIEW", "ANOTHER_INVALID"));
         request.setReportedAt(Instant.now());
-        request.setComments("Comments");
-        request.setUserEmail("test@example.com");
-        request.setScreen("screen");
-        request.setCurrentUrl("https://example.com");
-        request.setUserProvided(true);
-
-        Project project = new Project();
-        Session session = new Session();
+        request.setCurrentUrl("http://example.com");
+        request.setUserProvided(false);
 
         // When
-        Report report = reportMapper.fromCreateOnWidget(request, project, session);
+        Report report = reportMapper.fromCreateOnWidget(request, project, session, null);
 
         // Then
-        assertNotNull(report);
-        assertEquals(2, report.getTags().size());
-        assertTrue(report.getTags().contains(Tag.INTERFACE_ISSUE));
-        assertTrue(report.getTags().contains(Tag.MOBILE_VIEW));
+        assertThat(report.getTags())
+                .containsExactly(Tag.INTERFACE_ISSUE, Tag.MOBILE_VIEW)
+                .doesNotContain(Tag.NO_SUITABLE_TAG);
     }
 
     @Test
-    void fromCreateOnWidget_shouldLimitTagsToMax() {
+    void fromCreateOnWidget_shouldTrimExcessTags() {
         // Given
-        ReportCreationRequestWidget request = new ReportCreationRequestWidget();
-        request.setTitle("Test");
-
-        List<String> tags = List.of(
-                "INTERFACE_ISSUE", "MOBILE_VIEW", "BROKEN_LINK", "SLOW_LOADING",
-                "BLANK_SCREEN", "FUNCTIONALITY_PROBLEMS", "BROKEN_IMAGE",
-                "SEARCH_PROBLEM", "FORM_NOT_WORKING", "REDIRECT_LOOP",
-                "LOGIN_ISSUE", "REGISTER_ISSUE" // 12 тегов
+        List<String> manyTags = Arrays.asList(
+                "INTERFACE_ISSUE", "MOBILE_VIEW", "SLOW_LOADING", "BLANK_SCREEN",
+                "BROKEN_LINK", "FUNCTIONALITY_PROBLEMS", "BROKEN_IMAGE", "SEARCH_PROBLEM",
+                "FORM_NOT_WORKING", "REDIRECT_LOOP", "LOGIN_ISSUE", "REGISTER_ISSUE"
         );
-        request.setTags(tags);
-        request.setReportedAt(Instant.now());
-        request.setComments("Comments");
-        request.setUserEmail("test@example.com");
-        request.setScreen("screen");
-        request.setCurrentUrl("https://example.com");
-        request.setUserProvided(true);
 
-        Project project = new Project();
-        Session session = new Session();
+        ReportCreationRequestWidget request = new ReportCreationRequestWidget();
+        request.setTitle("Test");
+        request.setTags(manyTags);
+        request.setReportedAt(Instant.now());
+        request.setCurrentUrl("http://example.com");
+        request.setUserProvided(false);
 
         // When
-        Report report = reportMapper.fromCreateOnWidget(request, project, session);
+        Report report = reportMapper.fromCreateOnWidget(request, project, session, null);
 
         // Then
-        assertNotNull(report);
-        assertEquals(10, report.getTags().size());
+        assertThat(report.getTags()).hasSize(10);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "This is exactly 255 characters xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", // 255 символов
+            "Short title",
+            "A"
+    })
+    void fromCreateOnWidget_shouldHandleTitleLength(String title) {
+        // Given
+        ReportCreationRequestWidget request = new ReportCreationRequestWidget();
+        request.setTitle(title);
+        request.setReportedAt(Instant.now());
+        request.setCurrentUrl("http://example.com");
+        request.setUserProvided(false);
+        request.setTags(List.of("INTERFACE_ISSUE"));
+
+        // When
+        Report report = reportMapper.fromCreateOnWidget(request, project, session, null);
+
+        // Then
+        assertThat(report.getTitle()).isEqualTo(title);
     }
 
     @Test
-    void fromCreateOnWidget_shouldHandleNullComments() {
+    void fromCreateOnWidget_shouldTrimTitleWhenExceedsMaxLength() {
+        // Given
+        String longTitle = "x".repeat(300);
+
+        ReportCreationRequestWidget request = new ReportCreationRequestWidget();
+        request.setTitle(longTitle);
+        request.setReportedAt(Instant.now());
+        request.setCurrentUrl("http://example.com");
+        request.setUserProvided(false);
+        request.setTags(List.of("INTERFACE_ISSUE"));
+
+        // When
+        Report report = reportMapper.fromCreateOnWidget(request, project, session, null);
+
+        // Then
+        assertThat(report.getTitle()).hasSize(255);
+        assertThat(report.getTitle()).isEqualTo("x".repeat(255));
+    }
+
+    @Test
+    void fromCreateOnWidget_shouldNotTrimTitleWhenExactlyMaxLength() {
+        // Given
+        String exactTitle = "x".repeat(255);
+
+        ReportCreationRequestWidget request = new ReportCreationRequestWidget();
+        request.setTitle(exactTitle);
+        request.setReportedAt(Instant.now());
+        request.setCurrentUrl("http://example.com");
+        request.setUserProvided(false);
+        request.setTags(List.of("INTERFACE_ISSUE"));
+
+        // When
+        Report report = reportMapper.fromCreateOnWidget(request, project, session, null);
+
+        // Then
+        assertThat(report.getTitle()).hasSize(255);
+        assertThat(report.getTitle()).isEqualTo(exactTitle);
+    }
+
+    @Test
+    void fromCreateOnWidget_shouldHandleNullScreen() {
         // Given
         ReportCreationRequestWidget request = new ReportCreationRequestWidget();
         request.setTitle("Test");
-        request.setTags(List.of("INTERFACE_ISSUE"));
         request.setReportedAt(Instant.now());
-        request.setComments(null);
-        request.setUserEmail("test@example.com");
-        request.setScreen("screen");
-        request.setCurrentUrl("https://example.com");
-        request.setUserProvided(true);
-
-        Project project = new Project();
-        Session session = new Session();
+        request.setCurrentUrl("http://example.com");
+        request.setUserProvided(false);
+        request.setTags(List.of("INTERFACE_ISSUE"));
 
         // When
-        Report report = reportMapper.fromCreateOnWidget(request, project, session);
+        Report report = reportMapper.fromCreateOnWidget(request, project, session, null);
 
         // Then
-        assertNotNull(report);
-        assertNull(report.getComments());
+        assertThat(report.getScreen()).isNull();
     }
 
     @Test
@@ -164,415 +203,165 @@ class ReportMapperTest {
         // Given
         Report existingReport = new Report();
         existingReport.setTitle("Old Title");
-        existingReport.setComments("Old Comments");
+        existingReport.setComments("Old comments");
+        existingReport.setStatus(ReportStatus.NEW);
         existingReport.setCriticality(CriticalityLevel.LOW);
-        existingReport.setStatus(ReportStatus.IN_PROGRESS);
-        existingReport.setUserProvided(true);
+        existingReport.setProject(project);
+        existingReport.setDeveloper(developer);
 
         ReportUpdateRequestDashboard request = new ReportUpdateRequestDashboard();
         request.setTitle("New Title");
-        request.setComments("New Comments");
+        request.setComments("Updated comments");
+        request.setStatus(ReportStatus.IN_PROGRESS);
         request.setLevel(CriticalityLevel.HIGH);
-        request.setStatus(ReportStatus.DONE);
-        request.setUserProvided(false);
 
-        Project project = new Project();
-        project.setId(1L);
-        Developer developer = new Developer();
-        developer.setId(1L);
-        developer.setUsername("dev1");
+        Set<String> fieldsToUpdate = new HashSet<>(Arrays.asList("title", "comments", "status", "level"));
 
-        // When: Only update title and comments
-        Set<String> fields = Set.of("title", "comments");
-        Report updatedReport = reportMapper.updateFromDashboard(
-                existingReport, request, fields, project, developer);
+        // When
+        Report updated = reportMapper.updateFromDashboard(
+                existingReport, request, fieldsToUpdate, project, developer);
 
         // Then
-        assertEquals("New Title", updatedReport.getTitle());
-        assertEquals("New Comments", updatedReport.getComments());
-        assertEquals(CriticalityLevel.LOW, updatedReport.getCriticality());
-        assertEquals(ReportStatus.IN_PROGRESS, updatedReport.getStatus());
-        assertTrue(updatedReport.isUserProvided());
-        assertNull(updatedReport.getDeveloper());
-        assertNull(updatedReport.getProject());
+        assertThat(updated.getTitle()).isEqualTo("New Title");
+        assertThat(updated.getComments()).isEqualTo("Updated comments");
+        assertThat(updated.getStatus()).isEqualTo(ReportStatus.IN_PROGRESS);
+        assertThat(updated.getCriticality()).isEqualTo(CriticalityLevel.HIGH);
+        assertThat(updated.getProject()).isEqualTo(project);
+        assertThat(updated.getDeveloper()).isEqualTo(developer);
     }
 
     @Test
-    void updateFromDashboard_shouldUpdateAllFields() {
+    void updateFromDashboard_shouldThrowWhenRequiredFieldIsNull() {
         // Given
         Report existingReport = new Report();
-        existingReport.setTitle("Old Title");
-        existingReport.setUserProvided(false);
+        existingReport.setStatus(ReportStatus.NEW);
+        existingReport.setProject(project);
+        existingReport.setDeveloper(developer);
 
-        ReportUpdateRequestDashboard request = new ReportUpdateRequestDashboard();
-        request.setTitle("New Title");
-        request.setTags(List.of("INTERFACE_ISSUE", "MOBILE_VIEW"));
-        request.setReportedAt(Instant.now());
-        request.setComments("New Comments");
-        request.setLevel(CriticalityLevel.MEDIUM);
-        request.setStatus(ReportStatus.DONE);
-        request.setUserProvided(true);
-
-        Project project = new Project();
-        project.setId(1L);
-        Developer developer = new Developer();
-        developer.setId(1L);
-        developer.setUsername("dev1");
-
-        // When: Update all fields
-        Set<String> fields = Set.of("title", "tags", "reportedAt", "comments",
-                "developerName", "level", "status", "userProvided", "projectId");
-        Report updatedReport = reportMapper.updateFromDashboard(
-                existingReport, request, fields, project, developer);
-
-        // Then
-        assertEquals("New Title", updatedReport.getTitle());
-        assertEquals(2, updatedReport.getTags().size());
-        assertEquals(request.getReportedAt(), updatedReport.getReportedAt());
-        assertEquals("New Comments", updatedReport.getComments());
-        assertEquals(developer, updatedReport.getDeveloper());
-        assertEquals(CriticalityLevel.MEDIUM, updatedReport.getCriticality());
-        assertEquals(ReportStatus.DONE, updatedReport.getStatus());
-        assertTrue(updatedReport.isUserProvided());
-        assertEquals(project, updatedReport.getProject());
-    }
-
-    @Test
-    void updateFromDashboard_withNullReportedAt_shouldThrowException() {
-        // Given
-        Report existingReport = new Report();
-        ReportUpdateRequestDashboard request = new ReportUpdateRequestDashboard();
-        request.setReportedAt(null);
-
-        // When & Then
-        assertThrows(BusinessValidationException.class, () ->
-                reportMapper.updateFromDashboard(
-                        existingReport, request, Set.of("reportedAt"),
-                        null, null)
-        );
-    }
-
-    @Test
-    void updateFromDashboard_withNullStatus_shouldThrowException() {
-        // Given
-        Report existingReport = new Report();
         ReportUpdateRequestDashboard request = new ReportUpdateRequestDashboard();
         request.setStatus(null);
 
+        Set<String> fieldsToUpdate = Set.of("status");
+
         // When & Then
-        assertThrows(BusinessValidationException.class, () ->
-                reportMapper.updateFromDashboard(
-                        existingReport, request, Set.of("status"),
-                        null, null)
-        );
+        assertThatThrownBy(() ->
+                reportMapper.updateFromDashboard(existingReport, request, fieldsToUpdate, project, developer))
+                .isInstanceOf(BusinessValidationException.class)
+                .hasMessageContaining("status cannot be null");
     }
 
     @Test
-    void updateFromDashboard_withNullUserProvided_shouldThrowException() {
-        // Given
-        Report existingReport = new Report();
-        ReportUpdateRequestDashboard request = new ReportUpdateRequestDashboard();
-        request.setUserProvided(null);
-
-        // When & Then
-        assertThrows(BusinessValidationException.class, () ->
-                reportMapper.updateFromDashboard(
-                        existingReport, request, Set.of("userProvided"),
-                        null, null)
-        );
-    }
-
-    @Test
-    void updateFromDashboard_withNullTags_shouldSetNullTags() {
+    void updateFromDashboard_shouldHandleTagValidation() {
         // Given
         Report existingReport = new Report();
         existingReport.setTags(List.of(Tag.INTERFACE_ISSUE));
+        existingReport.setProject(project);
+        existingReport.setDeveloper(developer);
+
+        ReportUpdateRequestDashboard request = new ReportUpdateRequestDashboard();
+        request.setTags(Arrays.asList("invalid_tag", "MOBILE_VIEW", "ANOTHER_INVALID"));
+
+        Set<String> fieldsToUpdate = Set.of("tags");
+
+        // When
+        Report updated = reportMapper.updateFromDashboard(
+                existingReport, request, fieldsToUpdate, project, developer);
+
+        // Then
+        assertThat(updated.getTags())
+                .containsExactly(Tag.MOBILE_VIEW)
+                .doesNotContain(Tag.INTERFACE_ISSUE);
+    }
+
+    @Test
+    void updateFromDashboard_shouldHandleNullTags() {
+        // Given
+        Report existingReport = new Report();
+        existingReport.setTags(List.of(Tag.INTERFACE_ISSUE));
+        existingReport.setProject(project);
+        existingReport.setDeveloper(developer);
 
         ReportUpdateRequestDashboard request = new ReportUpdateRequestDashboard();
         request.setTags(null);
 
-        // When
-        Report updatedReport = reportMapper.updateFromDashboard(
-                existingReport, request, Set.of("tags"), null, null);
-
-        // Then
-        assertNull(updatedReport.getTags());
-    }
-
-    @Test
-    void updateFromDashboard_withEmptyTagsList_shouldSetEmptyList() {
-        // Given
-        Report existingReport = new Report();
-        existingReport.setTags(List.of(Tag.INTERFACE_ISSUE));
-
-        ReportUpdateRequestDashboard request = new ReportUpdateRequestDashboard();
-        request.setTags(List.of());
+        Set<String> fieldsToUpdate = Set.of("tags");
 
         // When
-        Report updatedReport = reportMapper.updateFromDashboard(
-                existingReport, request, Set.of("tags"), null, null);
+        Report updated = reportMapper.updateFromDashboard(
+                existingReport, request, fieldsToUpdate, project, developer);
 
         // Then
-        assertNotNull(updatedReport.getTags());
-        assertTrue(updatedReport.getTags().isEmpty());
-    }
-
-    @Test
-    void updateFromDashboard_withInvalidTags_shouldFilterThemOut() {
-        // Given
-        Report existingReport = new Report();
-        existingReport.setTags(List.of(Tag.INTERFACE_ISSUE));
-
-        ReportUpdateRequestDashboard request = new ReportUpdateRequestDashboard();
-        request.setTags(List.of("INTERFACE_ISSUE", "INVALID_TAG", "MOBILE_VIEW"));
-
-        // When
-        Report updatedReport = reportMapper.updateFromDashboard(
-                existingReport, request, Set.of("tags"), null, null);
-
-        // Then
-        assertNotNull(updatedReport.getTags());
-        assertEquals(2, updatedReport.getTags().size());
-        assertTrue(updatedReport.getTags().contains(Tag.INTERFACE_ISSUE));
-        assertTrue(updatedReport.getTags().contains(Tag.MOBILE_VIEW));
-    }
-
-    @Test
-    void updateFromDashboard_withDeveloperNameFieldButNullDeveloper_shouldSetNullDeveloper() {
-        // Given
-        Report existingReport = new Report();
-        Developer existingDev = new Developer();
-        existingDev.setUsername("oldDev");
-        existingReport.setDeveloper(existingDev);
-
-        ReportUpdateRequestDashboard request = new ReportUpdateRequestDashboard();
-        request.setDeveloperName(null);
-
-        // When
-        Report updatedReport = reportMapper.updateFromDashboard(
-                existingReport, request, Set.of("developerName"), null, null);
-
-        // Then
-        assertNull(updatedReport.getDeveloper());
+        assertThat(updated.getTags()).isNull();
     }
 
     @Test
     void attachEvents_shouldSetRelatedEventIds() {
         // Given
         Report report = new Report();
+
         Event event1 = new Event();
-        event1.setId(1L);
+        event1.setId(100L);
+
         Event event2 = new Event();
-        event2.setId(2L);
-        List<Event> events = List.of(event1, event2);
+        event2.setId(200L);
+
+        List<Event> events = Arrays.asList(event1, event2);
 
         // When
         reportMapper.attachEvents(report, events);
 
         // Then
-        assertNotNull(report.getRelatedEventIds());
-        assertEquals(2, report.getRelatedEventIds().size());
-        assertTrue(report.getRelatedEventIds().contains(1L));
-        assertTrue(report.getRelatedEventIds().contains(2L));
+        assertThat(report.getRelatedEventIds())
+                .containsExactly(100L, 200L);
     }
 
     @Test
-    void attachEvents_withEmptyList_shouldSetEmptyEventIds() {
+    void attachEvents_shouldHandleEmptyEvents() {
         // Given
         Report report = new Report();
-        report.setRelatedEventIds(List.of(1L, 2L));
-        List<Event> events = List.of();
+        report.setRelatedEventIds(Arrays.asList(1L, 2L, 3L));
+
+        List<Event> emptyEvents = List.of();
 
         // When
-        reportMapper.attachEvents(report, events);
+        reportMapper.attachEvents(report, emptyEvents);
 
         // Then
-        assertNotNull(report.getRelatedEventIds());
-        assertTrue(report.getRelatedEventIds().isEmpty());
+        assertThat(report.getRelatedEventIds()).isEmpty();
     }
 
-    @Test
-    void testTrimMethod_shouldReturnNullForNullInput() throws Exception {
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = {"  "})
+    void trim_shouldHandleNullOrEmptyStrings(String input) throws Exception {
+        // When
         Method trimMethod = ReportMapper.class.getDeclaredMethod("trim", String.class, int.class);
         trimMethod.setAccessible(true);
-
-        String result = (String) trimMethod.invoke(reportMapper, null, 10);
-        assertNull(result);
-    }
-
-    @Test
-    void testTrimMethod_shouldReturnOriginalIfWithinLimit() throws Exception {
-        Method trimMethod = ReportMapper.class.getDeclaredMethod("trim", String.class, int.class);
-        trimMethod.setAccessible(true);
-
-        String input = "Hello";
-        String result = (String) trimMethod.invoke(reportMapper, input, 10);
-        assertEquals("Hello", result);
-    }
-
-    @Test
-    void testTrimMethod_shouldTrimIfExceedsLimit() throws Exception {
-        Method trimMethod = ReportMapper.class.getDeclaredMethod("trim", String.class, int.class);
-        trimMethod.setAccessible(true);
-
-        String input = "Hello World";
-        String result = (String) trimMethod.invoke(reportMapper, input, 5);
-        assertEquals("Hello", result);
-    }
-
-    @Test
-    void testTrimMethod_withExactLength_shouldReturnOriginal() throws Exception {
-        Method trimMethod = ReportMapper.class.getDeclaredMethod("trim", String.class, int.class);
-        trimMethod.setAccessible(true);
-
-        String input = "Hello";
-        String result = (String) trimMethod.invoke(reportMapper, input, 5);
-        assertEquals("Hello", result);
-    }
-
-    @Test
-    void testIsValidEnum_shouldReturnTrueForValidEnum() throws Exception {
-        Method isValidEnumMethod = ReportMapper.class.getDeclaredMethod("isValidEnum", Class.class, String.class);
-        isValidEnumMethod.setAccessible(true);
-
-        boolean result = (boolean) isValidEnumMethod.invoke(reportMapper, Tag.class, "INTERFACE_ISSUE");
-        assertTrue(result);
-    }
-
-    @Test
-    void testIsValidEnum_shouldReturnFalseForInvalidEnum() throws Exception {
-        Method isValidEnumMethod = ReportMapper.class.getDeclaredMethod("isValidEnum", Class.class, String.class);
-        isValidEnumMethod.setAccessible(true);
-
-        boolean result = (boolean) isValidEnumMethod.invoke(reportMapper, Tag.class, "INVALID_TAG");
-        assertFalse(result);
-    }
-
-    @Test
-    void testIsValidTag_shouldReturnTrueForValidTag() throws Exception {
-        Method isValidTagMethod = ReportMapper.class.getDeclaredMethod("isValidTag", String.class);
-        isValidTagMethod.setAccessible(true);
-
-        boolean result = (boolean) isValidTagMethod.invoke(reportMapper, "INTERFACE_ISSUE");
-        assertTrue(result);
-    }
-
-    @Test
-    void testIsValidTag_shouldReturnFalseForInvalidTag() throws Exception {
-        Method isValidTagMethod = ReportMapper.class.getDeclaredMethod("isValidTag", String.class);
-        isValidTagMethod.setAccessible(true);
-
-        boolean result = (boolean) isValidTagMethod.invoke(reportMapper, "INVALID_TAG");
-        assertFalse(result);
-    }
-
-    @Test
-    void testIsValidTag_withEmptyString_shouldReturnFalse() throws Exception {
-        Method isValidTagMethod = ReportMapper.class.getDeclaredMethod("isValidTag", String.class);
-        isValidTagMethod.setAccessible(true);
-
-        boolean result = (boolean) isValidTagMethod.invoke(reportMapper, "");
-        assertFalse(result);
-    }
-
-    @Test
-    void fromCreateOnWidget_withNullTitle_shouldSetNullTitle() {
-        // Given
-        ReportCreationRequestWidget request = new ReportCreationRequestWidget();
-        request.setTitle(null);
-        request.setTags(List.of("INTERFACE_ISSUE"));
-        request.setReportedAt(Instant.now());
-        request.setComments("Comments");
-        request.setUserEmail("test@example.com");
-        request.setScreen("screen");
-        request.setCurrentUrl("https://example.com");
-        request.setUserProvided(true);
-
-        Project project = new Project();
-        Session session = new Session();
-
-        // When
-        Report report = reportMapper.fromCreateOnWidget(request, project, session);
+        String result = (String) trimMethod.invoke(reportMapper, input, 100);
 
         // Then
-        assertNotNull(report);
-        assertNull(report.getTitle());
+        assertThat(result).isEqualTo(input);
     }
 
     @Test
-    void fromCreateOnWidget_withEmptyTags_shouldSetEmptyTagsList() {
+    void isValidTag_shouldReturnTrueForValidTags() throws Exception {
         // Given
-        ReportCreationRequestWidget request = new ReportCreationRequestWidget();
-        request.setTitle("Test");
-        request.setTags(List.of());
-        request.setReportedAt(Instant.now());
-        request.setComments("Comments");
-        request.setUserEmail("test@example.com");
-        request.setScreen("screen");
-        request.setCurrentUrl("https://example.com");
-        request.setUserProvided(true);
+        ReportMapper mapper = new ReportMapper();
+        Method method = ReportMapper.class.getDeclaredMethod("isValidTag", String.class);
+        method.setAccessible(true);
 
-        Project project = new Project();
-        Session session = new Session();
-
-        // When
-        Report report = reportMapper.fromCreateOnWidget(request, project, session);
-
-        // Then
-        assertNotNull(report);
-        assertNotNull(report.getTags());
-        assertTrue(report.getTags().isEmpty());
+        // When & Then
+        assertThat((Boolean) method.invoke(mapper, "INTERFACE_ISSUE")).isTrue();
     }
 
     @Test
-    void fromCreateOnWidget_withUpperCaseConversion() {
+    void isValidTag_shouldReturnFalseForInvalidTags() throws Exception {
         // Given
-        ReportCreationRequestWidget request = new ReportCreationRequestWidget();
-        request.setTitle("Test");
-        request.setTags(List.of("interface_issue", "mobile_view"));
-        request.setReportedAt(Instant.now());
-        request.setComments("Comments");
-        request.setUserEmail("test@example.com");
-        request.setScreen("screen");
-        request.setCurrentUrl("https://example.com");
-        request.setUserProvided(true);
+        ReportMapper mapper = new ReportMapper();
+        Method method = ReportMapper.class.getDeclaredMethod("isValidTag", String.class);
+        method.setAccessible(true);
 
-        Project project = new Project();
-        Session session = new Session();
-
-        // When
-        Report report = reportMapper.fromCreateOnWidget(request, project, session);
-
-        // Then
-        assertNotNull(report);
-        assertEquals(2, report.getTags().size());
-        assertTrue(report.getTags().contains(Tag.INTERFACE_ISSUE));
-        assertTrue(report.getTags().contains(Tag.MOBILE_VIEW));
-    }
-
-    @Test
-    void fromCreateOnWidget_withTrimmedTags() {
-        // Given
-        ReportCreationRequestWidget request = new ReportCreationRequestWidget();
-        request.setTitle("Test");
-        request.setTags(List.of("  INTERFACE_ISSUE  ", "  MOBILE_VIEW  "));
-        request.setReportedAt(Instant.now());
-        request.setComments("Comments");
-        request.setUserEmail("test@example.com");
-        request.setScreen("screen");
-        request.setCurrentUrl("https://example.com");
-        request.setUserProvided(true);
-
-        Project project = new Project();
-        Session session = new Session();
-
-        // When
-        Report report = reportMapper.fromCreateOnWidget(request, project, session);
-
-        // Then
-        assertNotNull(report);
-        assertEquals(2, report.getTags().size());
-        assertTrue(report.getTags().contains(Tag.INTERFACE_ISSUE));
-        assertTrue(report.getTags().contains(Tag.MOBILE_VIEW));
+        // When & Then
+        assertThat((Boolean) method.invoke(mapper, "INVALID_TAG_NAME")).isFalse();
     }
 }

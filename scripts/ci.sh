@@ -34,12 +34,6 @@ else
     fi
 fi
 
-# Проверяем Docker
-if ! command -v docker &> /dev/null; then
-    echo "Docker is not installed"
-    exit 1
-fi
-
 echo "Docker: $(docker --version)"
 
 # Собираем виджет как статический файл
@@ -86,16 +80,22 @@ echo "Cleaning up previous containers..."
 docker-compose -f docker-compose.ci.yml down --remove-orphans 2>/dev/null || true
 
 # Собираем образы
-echo "Building Docker images..."
-docker-compose -f docker-compose.ci.yml build
+echo "Building Docker images (running backend tests)..."
+if docker-compose -f docker-compose.ci.yml build; then
+    echo "✓ Docker build successful - all tests passed!"
+else
+    echo "✗ Docker build failed - backend tests likely failed"
+    echo "Check backend tests or Docker build logs for details"
+    exit 1
+fi
 
 # Запускаем всё (без виджета как сервиса)
 echo "Starting services..."
 docker-compose -f docker-compose.ci.yml up -d
 
 echo ""
-echo "Waiting for services to start (20 seconds)..."
-sleep 20
+echo "Waiting for services to start (30 seconds)..."
+sleep 30
 
 # Проверяем статус
 echo ""
@@ -112,10 +112,8 @@ if docker-compose -f docker-compose.ci.yml ps | grep -q "Up"; then
 
     echo ""
     echo "Access URLs:"
-    echo "   Backend API:     http://localhost:8080"
     echo "   Swagger UI:      http://localhost:8080/swagger-ui.html"
     echo "   Dashboard:       http://localhost:3000"
-    echo "   Widget JS (local): file://$(pwd)/frontend/widget/dist/bugtracker.js"
 
     # Проверяем доступность
     echo ""
@@ -123,7 +121,7 @@ if docker-compose -f docker-compose.ci.yml ps | grep -q "Up"; then
 
     # Проверка бэкенда
     if curl -s http://localhost:8080/actuator/health > /dev/null 2>&1; then
-        echo "✓ Backend is responding"
+        echo "✓ Backend is responding (tests passed during build)"
 
         # Проверка Swagger
         if curl -s http://localhost:8080/swagger-ui.html > /dev/null 2>&1; then
@@ -131,6 +129,8 @@ if docker-compose -f docker-compose.ci.yml ps | grep -q "Up"; then
         fi
     else
         echo "Backend might be starting..."
+        echo "Backend logs:"
+        docker-compose -f docker-compose.ci.yml logs backend --tail=10
     fi
 
     # Проверка dashboard
@@ -146,14 +146,6 @@ else
     docker-compose -f docker-compose.ci.yml logs --tail=20
 fi
 
-echo ""
-echo "To use the widget:"
-echo "1. Include this in your HTML:"
-echo "   <script src=\"http://localhost:8080/static/bugtracker.js\"></script>"
-echo "   (You'll need to serve the widget file through backend static resources)"
-echo ""
-echo "2. Or use the local file:"
-echo "   <script src=\"file://$(pwd)/frontend/widget/dist/bugtracker.js\"></script>"
 echo ""
 echo "View logs:"
 echo "   docker-compose -f docker-compose.ci.yml logs -f"

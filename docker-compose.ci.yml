@@ -16,19 +16,47 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - bugtracker-network
 
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
+      args:
+        # Аргументы для сборки
+        - GRADLE_OPTS=-Dorg.gradle.daemon=false -Dorg.gradle.parallel=true
     environment:
-      DB_URL: jdbc:postgresql://postgres:5432/${DB_NAME}
-      DB_USERNAME: ${DB_USERNAME}
-      DB_PASSWORD: ${DB_PASSWORD}
-      JWT_SECRET: ${JWT_SECRET:-development-jwt-secret-change-me}
+      # Основные настройки
+      DB_URL: jdbc:postgresql://postgres:5432/${DB_NAME:-bugtracker_db}
+      DB_USERNAME: ${DB_USERNAME:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+
+      # JWT настройки
+      JWT_SECRET: ${JWT_SECRET:-development-jwt-secret-change-me-in-production}
+      JWT_EXPIRATION_TIME: ${JWT_EXPIRATION_TIME:-3600000}
+
+      # Spring настройки
       SPRING_JPA_HIBERNATE_DDL_AUTO: ${SPRING_JPA_HIBERNATE_DDL_AUTO:-update}
       SPRING_JPA_SHOW_SQL: ${SPRING_JPA_SHOW_SQL:-false}
-      OPENAI_KEY: ${OPENAI_KEY}
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-default}
+
+      # AI настройки
+      OPENAI_KEY: ${OPENAI_KEY:-}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+
+      # Настройки приложения - ВАЖНО: CORS настройки
+      APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:3001,http://127.0.0.1:3000,http://127.0.0.1:3001,http://dashboard:80}
+      SERVER_PORT: 8080
+
+      # Настройки логирования для тестов и отладки CORS
+      LOGGING_LEVEL_ORG_SPRINGFRAMEWORK: ${LOGGING_LEVEL_ORG_SPRINGFRAMEWORK:-WARN}
+      LOGGING_LEVEL_UNI_BUGTRACKER: ${LOGGING_LEVEL_UNI_BUGTRACKER:-DEBUG}
+      LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_WEB_CORS: ${LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_WEB_CORS:-DEBUG}
+
+      # Настройки для мониторинга
+      MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: ${MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE:-health,info,metrics}
+      MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS: ${MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS:-always}
     depends_on:
       postgres:
         condition: service_healthy
@@ -37,22 +65,57 @@ services:
     volumes:
       # Монтируем собранный виджет в статические ресурсы бэкенда
       - ./frontend/widget/dist:/app/static/widget:ro
+      # Монтируем логи для отладки
+      - backend-logs:/app/logs
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 60s
+    networks:
+      - bugtracker-network
+    restart: "no"
 
   dashboard:
     build:
       context: ./frontend/dashboard
       dockerfile: Dockerfile
     environment:
+      # Для внутри Docker сети
       REACT_APP_API_URL: http://backend:8080/api
+      # Для браузера (внешнего доступа)
+      REACT_APP_EXTERNAL_API_URL: http://localhost:8080/api
+      REACT_APP_WS_URL: ws://backend:8080/ws
+      REACT_APP_WIDGET_URL: http://localhost:8080/static/widget/bugtracker.js
+      NODE_ENV: production
+      # Добавляем переменную для отладки
+      REACT_APP_DEBUG_CORS: "true"
     depends_on:
       - backend
     ports:
       - "3000:80"
+    volumes:
+      - dashboard-logs:/var/log/nginx
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - bugtracker-network
 
 volumes:
   postgres_data:
+    driver: local
+  backend-logs:
+    driver: local
+  dashboard-logs:
+    driver: local
+
+networks:
+  bugtracker-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

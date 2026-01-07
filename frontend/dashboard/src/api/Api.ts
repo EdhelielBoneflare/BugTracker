@@ -23,8 +23,7 @@ class ApiClient {
             const response = await fetch(`${this.baseUrl}${endpoint}`, {
                 ...options,
                 headers,
-                // КРИТИЧЕСКО ВАЖНО: добавьте credentials для работы с CORS
-                credentials: 'include',  // <-- ДОБАВЬТЕ ЭТУ СТРОКУ
+                credentials: 'include',
             });
 
             this.logRequest(options.method || 'GET', endpoint, response.status);
@@ -104,7 +103,6 @@ class ApiClient {
         try {
             errorData = await response.json();
         } catch {
-            // Ignore JSON parse errors
         }
 
         const errorMessage =
@@ -139,7 +137,6 @@ class ApiClient {
             body: JSON.stringify({ username, password }),
         });
 
-        // Сохраняем токен, если он пришел в ответе
         if (result.token) {
             this.setToken(result.token);
         }
@@ -202,7 +199,7 @@ class ApiClient {
 
     async updateReportDashboard(reportId: number, data: {
         status?: string;
-        criticality?: string;
+        level?: string;
         comments?: string;
         projectId?: string;
         developerName?: string;

@@ -55,7 +55,7 @@ Unit тесты в src/test/java (JUnit 5, Mockito).
 Файлы:
 - `docker-compose.ci.yml` — конфигурация Docker Compose со следующими сервисами:
   - `postgres` — база данных PostgreSQL для хранения данных
-  - `backend` — Java Spring Boot приложение с REST API
+  - `backend` — Java Spring Boot приложение с REST API 
   - `dashboard` — React фронтенд для административного интерфейса
   - Виджет собирается как статический JavaScript файл и обслуживается через бэкенд
 - `scripts/ci.sh` — единый скрипт для сборки, запуска unit и integration тестов и старта приложения.

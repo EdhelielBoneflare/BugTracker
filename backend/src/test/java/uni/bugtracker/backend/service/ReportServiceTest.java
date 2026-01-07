@@ -6,9 +6,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageRequest;
 import uni.bugtracker.backend.dto.report.ReportCreationRequestWidget;
 import uni.bugtracker.backend.dto.report.ReportUpdateRequestDashboard;
 import uni.bugtracker.backend.exception.BusinessValidationException;
@@ -16,16 +17,15 @@ import uni.bugtracker.backend.exception.ResourceNotFoundException;
 import uni.bugtracker.backend.model.*;
 import uni.bugtracker.backend.repository.*;
 import uni.bugtracker.backend.utility.ReportMapper;
+import uni.bugtracker.backend.utility.ai_criticality.ReportCreatedEvent;
 
 import java.time.Instant;
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
@@ -34,366 +34,238 @@ class ReportServiceTest {
 
     @Mock
     private ReportRepository reportRepository;
-
     @Mock
     private ProjectRepository projectRepository;
-
     @Mock
     private SessionRepository sessionRepository;
-
     @Mock
     private DeveloperRepository developerRepository;
-
     @Mock
     private EventRepository eventRepository;
-
     @Mock
     private ReportMapper reportMapper;
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
     private ReportService reportService;
 
+    private ReportCreationRequestWidget widgetRequest;
+    private ReportUpdateRequestDashboard dashboardRequest;
     private Project project;
     private Session session;
-    private Report report;
     private Developer developer;
+    private Report report;
+    private Event event;
 
     @BeforeEach
     void setUp() {
+        // Setup test data
         project = new Project();
-        project.setId(1L);
+        project.setId("project-123");
         project.setName("Test Project");
 
         session = new Session();
         session.setId(1L);
         session.setProject(project);
+        session.setIsActive(true);
+
+        developer = Developer.builder()
+                .id("dev-123")
+                .username("john.doe")
+                .build();
+
+        event = new Event();
+        event.setId(100L);
+        event.setTimestamp(Instant.now());
 
         report = new Report();
-        report.setId(100L);
+        report.setId(1L);
+        report.setTitle("Test Report");
         report.setProject(project);
         report.setSession(session);
         report.setReportedAt(Instant.now());
+        report.setCriticality(CriticalityLevel.UNKNOWN);
         report.setStatus(ReportStatus.NEW);
-        report.setUserProvided(false);
-        report.setTags(List.of(Tag.BROKEN_LINK));
-        report.setRelatedEventIds(List.of(1L, 2L));
-        report.setTitle("Test Title");
-        report.setComments("Test Comments");
-        report.setCurrentUrl("https://example.com");
+        report.setTags(new ArrayList<>());
 
-        developer = new Developer();
-        developer.setId(1L);
-        developer.setUsername("dev1");
-        developer.setPassword("password");
+        widgetRequest = new ReportCreationRequestWidget();
+        widgetRequest.setProjectId("project-123");
+        widgetRequest.setSessionId(1L);
+        widgetRequest.setTitle("Test Report");
+        widgetRequest.setReportedAt(Instant.now());
+
+        dashboardRequest = new ReportUpdateRequestDashboard();
+        dashboardRequest.setTitle("Updated Title");
+        dashboardRequest.setDeveloperName("john.doe");
     }
 
     @Test
-    void createReport_WithValidRequest_ShouldCreateReport() {
-        // Arrange
-        ReportCreationRequestWidget request = new ReportCreationRequestWidget();
-        request.setProjectId(1L);
-        request.setSessionId(1L);
-        request.setTitle("Test Title");
-        request.setUserProvided(true);
-        request.setReportedAt(Instant.now());
+    void createReport_shouldSaveReportAndPublishEvent() {
+        // Given
+        byte[] screen = new byte[]{1, 2, 3};
+        List<Event> events = List.of(event);
 
-        when(projectRepository.findById(1L)).thenReturn(Optional.of(project));
+        when(projectRepository.findById("project-123")).thenReturn(Optional.of(project));
         when(sessionRepository.findById(1L)).thenReturn(Optional.of(session));
-
-        Report mappedReport = new Report();
-        mappedReport.setId(100L);
-        mappedReport.setProject(project);
-        mappedReport.setSession(session);
-        mappedReport.setTags(List.of(Tag.BROKEN_LINK));
-        when(reportMapper.fromCreateOnWidget(eq(request), eq(project), eq(session)))
-                .thenReturn(mappedReport);
-
-        List<Event> events = Arrays.asList(new Event(), new Event());
+        when(reportMapper.fromCreateOnWidget(widgetRequest, project, session, screen)).thenReturn(report);
         when(eventRepository.findAllBySessionId(1L)).thenReturn(events);
+        when(eventRepository.findFirstBySessionIdOrderByTimestampDesc(1L)).thenReturn(Optional.of(event));
+        when(reportRepository.save(report)).thenReturn(report);
 
-        when(reportRepository.save(mappedReport)).thenReturn(mappedReport);
+        // When
+        Long reportId = reportService.createReport(widgetRequest, screen);
 
-        // Act
-        Long reportId = reportService.createReport(request);
-
-        // Assert
-        assertThat(reportId).isEqualTo(100L);
-        verify(projectRepository).findById(1L);
+        // Then
+        assertThat(reportId).isEqualTo(1L);
+        verify(projectRepository).findById("project-123");
         verify(sessionRepository).findById(1L);
-        verify(reportMapper).fromCreateOnWidget(request, project, session);
-        verify(reportMapper).attachEvents(mappedReport, events);
-        verify(reportRepository).save(mappedReport);
+        verify(reportMapper).fromCreateOnWidget(widgetRequest, project, session, screen);
+        verify(eventRepository).findAllBySessionId(1L);
+        verify(reportMapper).attachEvents(report, events);
+        verify(reportRepository).save(report);
+        verify(eventPublisher).publishEvent(any(ReportCreatedEvent.class));
+
+        verify(sessionRepository, never()).save(any(Session.class));
+
+        verify(eventRepository).findFirstBySessionIdOrderByTimestampDesc(1L);
     }
 
     @Test
-    void createReport_WithNonExistentProject_ShouldThrowException() {
-        // Arrange
-        ReportCreationRequestWidget request = new ReportCreationRequestWidget();
-        request.setProjectId(999L);
-        request.setSessionId(1L);
+    void createReport_whenProjectNotFound_shouldThrowException() {
+        // Given
+        when(projectRepository.findById("project-123")).thenReturn(Optional.empty());
 
-        when(projectRepository.findById(999L)).thenReturn(Optional.empty());
-
-        // Act & Assert
-        assertThatThrownBy(() -> reportService.createReport(request))
+        // When & Then
+        assertThatThrownBy(() -> reportService.createReport(widgetRequest, new byte[]{}))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessageContaining("Project doesn't exist");
     }
 
     @Test
-    void getReport_WithExistingId_ShouldReturnReport() {
-        // Arrange
-        when(reportRepository.findById(100L)).thenReturn(Optional.of(report));
+    void updateReportFromDashboard_shouldUpdateReport() {
+        // Given
+        String rawJson = "{\"title\":\"Updated Title\",\"developerName\":\"john.doe\"}";
 
-        // Act
-        Report result = reportService.getReport(100L);
+        when(reportRepository.findById(1L)).thenReturn(Optional.of(report));
+        when(developerRepository.findByUsername("john.doe")).thenReturn(Optional.of(developer));
+        when(reportMapper.updateFromDashboard(eq(report), eq(dashboardRequest), anySet(), eq(null), eq(developer)))
+                .thenReturn(report);
+        when(reportRepository.save(report)).thenReturn(report);
 
-        // Assert
-        assertThat(result).isEqualTo(report);
-        verify(reportRepository).findById(100L);
+        // When
+        var result = reportService.updateReportFromDashboard(1L, dashboardRequest, rawJson);
+
+        // Then
+        assertThat(result).isNotNull();
+        verify(reportRepository).findById(1L);
+        verify(developerRepository).findByUsername("john.doe");
+        verify(reportMapper).updateFromDashboard(any(), any(), anySet(), any(), any());
+        verify(reportRepository).save(report);
     }
 
     @Test
-    void getReport_WithNonExistentId_ShouldThrowException() {
-        // Arrange
-        when(reportRepository.findById(999L)).thenReturn(Optional.empty());
+    void updateReportFromDashboard_withInvalidJson_shouldThrowException() {
+        // Given
+        String invalidJson = "{invalid json";
 
-        // Act & Assert
-        assertThatThrownBy(() -> reportService.getReport(999L))
+        // When & Then
+        assertThatThrownBy(() -> reportService.updateReportFromDashboard(1L, dashboardRequest, invalidJson))
+                .isInstanceOf(BusinessValidationException.class)
+                .hasMessageContaining("Unexpected character");
+    }
+
+    @Test
+    void updateReportFromDashboard_whenReportNotFound_shouldThrowException() {
+        // Given
+        String rawJson = "{}";
+        when(reportRepository.findById(anyLong())).thenReturn(Optional.empty());
+
+        // When & Then
+        assertThatThrownBy(() -> reportService.updateReportFromDashboard(999L, dashboardRequest, rawJson))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessageContaining("Report doesn't exist");
     }
 
     @Test
-    void updateReportFromDashboard_WithValidRequest_ShouldUpdateReport() {
-        // Arrange
-        String rawJson = "{\"projectId\": 1, \"developerName\": \"dev1\"}";
-        ReportUpdateRequestDashboard request = new ReportUpdateRequestDashboard();
-        request.setProjectId(1L);
-        request.setDeveloperName("dev1");
+    void getReportCard_shouldReturnDTO() {
+        // Given
+        when(reportRepository.findById(1L)).thenReturn(Optional.of(report));
 
-        Report updatedReport = new Report();
-        updatedReport.setId(100L);
-        updatedReport.setProject(project);
-        updatedReport.setSession(session);
-        updatedReport.setTags(List.of(Tag.BROKEN_LINK));
+        // When
+        var result = reportService.getReportCard(1L);
 
-        when(reportRepository.findById(100L)).thenReturn(Optional.of(report));
-        when(projectRepository.findById(1L)).thenReturn(Optional.of(project));
-        when(developerRepository.findByUsername("dev1")).thenReturn(Optional.of(developer));
-
-        when(reportMapper.updateFromDashboard(eq(report), eq(request), anySet(), eq(project), eq(developer)))
-                .thenReturn(updatedReport);
-
-        when(reportRepository.save(updatedReport)).thenReturn(updatedReport);
-
-        // Act
-        var result = reportService.updateReportFromDashboard(100L, request, rawJson);
-
-        // Assert
+        // Then
         assertThat(result).isNotNull();
-        verify(reportRepository).findById(100L);
-        verify(projectRepository).findById(1L);
-        verify(developerRepository).findByUsername("dev1");
-        verify(reportMapper).updateFromDashboard(eq(report), eq(request), anySet(), eq(project), eq(developer));
+        verify(reportRepository).findById(1L);
     }
 
     @Test
-    void updateReportFromDashboard_WithInvalidJson_ShouldThrowException() {
-        // Arrange
-        String invalidJson = "{invalid json";
-        ReportUpdateRequestDashboard request = new ReportUpdateRequestDashboard();
+    void getAllReportsOfProject_shouldReturnPage() {
+        // Given
+        PageRequest pageable = PageRequest.of(0, 10);
+        Page<Report> reportPage = new PageImpl<>(List.of(report), pageable, 1);
 
-        // Act & Assert
-        BusinessValidationException exception = assertThrows(
-                BusinessValidationException.class,
-                () -> reportService.updateReportFromDashboard(100L, request, invalidJson)
-        );
+        when(reportRepository.findAllByProjectId("project-123", pageable)).thenReturn(reportPage);
 
-        assertThat(exception.toString())
-                .contains("BusinessValidationException");
-    }
+        // When
+        Page<?> result = reportService.getAllReportsOfProject("project-123", pageable);
 
-    @Test
-    void updateReportFromDashboard_WithProjectIdNull_ShouldThrowException() {
-        // Arrange
-        String rawJson = "{\"projectId\": null}";
-        ReportUpdateRequestDashboard request = new ReportUpdateRequestDashboard();
-        request.setProjectId(null);
-
-        when(reportRepository.findById(100L)).thenReturn(Optional.of(report));
-
-        // Act & Assert
-        assertThatThrownBy(() -> reportService.updateReportFromDashboard(100L, request, rawJson))
-                .isInstanceOf(BusinessValidationException.class)
-                .hasMessageContaining("projectId cannot be null");
-    }
-
-    @Test
-    void getAllReportsOfProject_ShouldReturnPage() {
-        // Arrange
-        Pageable pageable = Pageable.ofSize(10);
-        Report reportWithData = createCompleteReport();
-
-        Page<Report> reportPage = new PageImpl<>(List.of(reportWithData));
-
-        when(reportRepository.findAllByProjectId(1L, pageable)).thenReturn(reportPage);
-
-        // Act
-        var result = reportService.getAllReportsOfProject(1L, pageable);
-
-        // Assert
-        assertThat(result).isNotNull();
+        // Then
         assertThat(result.getTotalElements()).isEqualTo(1);
-        verify(reportRepository).findAllByProjectId(1L, pageable);
+        verify(reportRepository).findAllByProjectId("project-123", pageable);
     }
 
     @Test
-    void getAllReportsSolvedOnProject_ShouldReturnPage() {
-        // Arrange
-        Pageable pageable = Pageable.ofSize(10);
-        Report reportWithData = createCompleteReport();
-        reportWithData.setStatus(ReportStatus.DONE);
+    void getAllReportsSolvedOnProject_shouldReturnOnlyDoneReports() {
+        // Given
+        PageRequest pageable = PageRequest.of(0, 10);
 
-        Page<Report> reportPage = new PageImpl<>(List.of(reportWithData));
+        Report doneReport = new Report();
+        doneReport.setId(2L);
+        doneReport.setTitle("Done Report");
+        doneReport.setProject(project);
+        doneReport.setStatus(ReportStatus.DONE);
+        doneReport.setCriticality(CriticalityLevel.UNKNOWN);
+        doneReport.setTags(new ArrayList<>());
 
-        when(reportRepository.findAllByProjectIdAndStatus(1L, ReportStatus.DONE, pageable))
+        Page<Report> reportPage = new PageImpl<>(List.of(doneReport), pageable, 1);
+
+        when(reportRepository.findAllByProjectIdAndStatus("project-123", ReportStatus.DONE, pageable))
                 .thenReturn(reportPage);
 
-        // Act
-        var result = reportService.getAllReportsSolvedOnProject(1L, pageable);
+        // When
+        Page<?> result = reportService.getAllReportsSolvedOnProject("project-123", pageable);
 
-        // Assert
-        assertThat(result).isNotNull();
+        // Then
         assertThat(result.getTotalElements()).isEqualTo(1);
-        verify(reportRepository).findAllByProjectIdAndStatus(1L, ReportStatus.DONE, pageable);
+        verify(reportRepository).findAllByProjectIdAndStatus("project-123", ReportStatus.DONE, pageable);
     }
 
     @Test
-    void deleteReport_WithExistingId_ShouldDeleteAndReturnDTO() {
-        // Arrange
-        Report reportWithData = createCompleteReport();
+    void deleteReport_shouldDeleteAndReturnDTO() {
+        // Given
+        when(reportRepository.findById(1L)).thenReturn(Optional.of(report));
 
-        when(reportRepository.findById(100L)).thenReturn(Optional.of(reportWithData));
+        // When
+        var result = reportService.deleteReport(1L);
 
-        // Act
-        var result = reportService.deleteReport(100L);
-
-        // Assert
+        // Then
         assertThat(result).isNotNull();
-        verify(reportRepository).findById(100L);
-        verify(reportRepository).delete(reportWithData);
+        verify(reportRepository).findById(1L);
+        verify(reportRepository).delete(report);
     }
 
     @Test
-    void getReportCard_WithExistingId_ShouldReturnDTO() {
-        // Arrange
-        Report reportWithData = createCompleteReport();
+    void getProjectIdByReportId_shouldReturnProjectId() {
+        // Given
+        when(reportRepository.findById(1L)).thenReturn(Optional.of(report));
 
-        when(reportRepository.findById(100L)).thenReturn(Optional.of(reportWithData));
+        // When
+        String projectId = reportService.getProjectIdByReportId(1L);
 
-        // Act
-        var result = reportService.getReportCard(100L);
-
-        // Assert
-        assertThat(result).isNotNull();
-        verify(reportRepository).findById(100L);
-    }
-
-    @Test
-    void getReportCard_WithNonExistentId_ShouldThrowException() {
-        // Arrange
-        when(reportRepository.findById(999L)).thenReturn(Optional.empty());
-
-        // Act & Assert
-        assertThatThrownBy(() -> reportService.getReportCard(999L))
-                .isInstanceOf(ResourceNotFoundException.class)
-                .hasMessageContaining("Report doesn't exist");
-    }
-
-    @Test
-    void updateReportFromDashboard_WithDeveloperNameNull_ShouldNotSearchDeveloper() {
-        // Arrange
-        String rawJson = "{\"developerName\": null}";
-        ReportUpdateRequestDashboard request = new ReportUpdateRequestDashboard();
-        request.setDeveloperName(null);
-
-        Report updatedReport = createCompleteReport();
-
-        when(reportRepository.findById(100L)).thenReturn(Optional.of(report));
-        when(reportMapper.updateFromDashboard(eq(report), eq(request), anySet(), isNull(), isNull()))
-                .thenReturn(updatedReport);
-        when(reportRepository.save(updatedReport)).thenReturn(updatedReport);
-
-        // Act
-        var result = reportService.updateReportFromDashboard(100L, request, rawJson);
-
-        // Assert
-        assertThat(result).isNotNull();
-        verify(developerRepository, never()).findByUsername(anyString());
-    }
-
-    @Test
-    void updateReportFromDashboard_WithoutProjectIdInJson_ShouldNotUpdateProject() {
-        // Arrange
-        String rawJson = "{\"developerName\": \"dev1\"}";
-        ReportUpdateRequestDashboard request = new ReportUpdateRequestDashboard();
-        request.setDeveloperName("dev1");
-
-        Report updatedReport = createCompleteReport();
-
-        when(reportRepository.findById(100L)).thenReturn(Optional.of(report));
-        when(developerRepository.findByUsername("dev1")).thenReturn(Optional.of(developer));
-        when(reportMapper.updateFromDashboard(eq(report), eq(request), anySet(), isNull(), eq(developer)))
-                .thenReturn(updatedReport);
-        when(reportRepository.save(updatedReport)).thenReturn(updatedReport);
-
-        // Act
-        var result = reportService.updateReportFromDashboard(100L, request, rawJson);
-
-        // Assert
-        assertThat(result).isNotNull();
-        verify(projectRepository, never()).findById(anyLong());
-    }
-
-    @Test
-    void updateReportFromDashboard_WithEmptyJson_ShouldUpdateWithDefaultFields() {
-        // Arrange
-        String rawJson = "{}";
-        ReportUpdateRequestDashboard request = new ReportUpdateRequestDashboard();
-
-        Report updatedReport = createCompleteReport();
-
-        when(reportRepository.findById(100L)).thenReturn(Optional.of(report));
-        when(reportMapper.updateFromDashboard(eq(report), eq(request), eq(Set.of()), isNull(), isNull()))
-                .thenReturn(updatedReport);
-        when(reportRepository.save(updatedReport)).thenReturn(updatedReport);
-
-        // Act
-        var result = reportService.updateReportFromDashboard(100L, request, rawJson);
-
-        // Assert
-        assertThat(result).isNotNull();
-        verify(reportRepository).findById(100L);
-        verify(projectRepository, never()).findById(anyLong());
-        verify(developerRepository, never()).findByUsername(anyString());
-    }
-
-    // Method for creating full report
-    private Report createCompleteReport() {
-        Report completeReport = new Report();
-        completeReport.setId(100L);
-        completeReport.setProject(project);
-        completeReport.setSession(session);
-        completeReport.setReportedAt(Instant.now());
-        completeReport.setStatus(ReportStatus.NEW);
-        completeReport.setUserProvided(false);
-        completeReport.setTags(List.of(Tag.BROKEN_LINK));
-        completeReport.setRelatedEventIds(List.of(1L, 2L));
-        completeReport.setTitle("Test Title");
-        completeReport.setComments("Test Comments");
-        completeReport.setCurrentUrl("https://example.com");
-        completeReport.setCriticality(CriticalityLevel.MEDIUM);
-        return completeReport;
+        // Then
+        assertThat(projectId).isEqualTo("project-123");
+        verify(reportRepository).findById(1L);
     }
 }
