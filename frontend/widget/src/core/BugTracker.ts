@@ -7,6 +7,7 @@ import { NetworkMonitor } from './NetworkMonitor';
 import { UserActionTracker } from './UserActionTracker';
 import { WidgetButton } from '../ui/WidgetButton';
 import { Client } from '../api/Client';
+import { BugReportModal } from '../ui/BugReportModal';
 import { BeaconClient } from '../api/BeaconClient';
 import { DEFAULT_FLUSH_INTERVAL, DEFAULT_MAX_BUFFER_SIZE } from '../constants/defaults';
 
@@ -357,6 +358,7 @@ export class BugTracker {
      * Open bug report modal
      */
     private async openBugReport(): Promise<void> {
+        /*
         // Import dynamically to reduce initial bundle size
         let BugReportModalModule;
         try {
@@ -374,7 +376,7 @@ export class BugTracker {
             return;
         }
 
-        const { BugReportModal } = BugReportModalModule;
+        const { BugReportModal } = BugReportModalModule;*/
 
         // Get numeric session ID for the report
         const sessionId = Number(this.sessionManager.getSessionId());
