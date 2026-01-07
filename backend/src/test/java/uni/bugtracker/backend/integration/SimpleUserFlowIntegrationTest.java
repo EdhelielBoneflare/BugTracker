@@ -19,7 +19,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 /**
- * Simple integration test covering a complete user flow:
  * 1. Register a new user
  * 2. Upgrade user to ADMIN role (simulating admin creation)
  * 3. Login with the admin user
@@ -106,12 +105,12 @@ class SimpleUserFlowIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(projectJson))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.id").exists())
+                .andExpect(jsonPath("$.projectId").exists())
                 .andExpect(jsonPath("$.message").value("Project created"))
                 .andReturn();
 
         String createProjectResponse = createProjectResult.getResponse().getContentAsString();
-        String projectId = objectMapper.readTree(createProjectResponse).get("id").asText();
+        String projectId = objectMapper.readTree(createProjectResponse).get("projectId").asText();
 
         // Step 5: Verify the project exists by fetching all projects
         mockMvc.perform(get("/api/projects")

@@ -19,11 +19,11 @@ session:
 
 # JWT Configuration
 jwt:
-  secret: "test-secret-key-for-testing-only-do-not-use-in-production"
+  secret: "testsecretkeyfortestingonlydonotuseinproduction"
   expiration-time: 3600000
 
 # AI Client Configuration
-openrouter.api.key: "dummy-key-for-tests"
+openrouter.api.key: "dummykeyfortests"
 
 spring.config.import: ""
 
