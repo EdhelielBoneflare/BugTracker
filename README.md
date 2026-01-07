@@ -102,5 +102,3 @@ Unit тесты в src/test/java (JUnit 5, Mockito).
 В репозитории добавлена одностраничная тестовая страница для ручного тестирования API: `docs/index.html`.\
 Страница доступна по адресу `https://edhelielboneflare.github.io/BugTracker/`.
 
-$ docker exec bugtracker-postgres-1 psql -U kate -d bugtracker_db -c "UPDATE user_dev SET role = 'ADMIN' WHERE username = 'admin';"
-
