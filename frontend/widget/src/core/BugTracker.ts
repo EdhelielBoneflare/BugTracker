@@ -7,6 +7,7 @@ import { NetworkMonitor } from './NetworkMonitor';
 import { UserActionTracker } from './UserActionTracker';
 import { WidgetButton } from '../ui/WidgetButton';
 import { Client } from '../api/Client';
+import { BeaconClient } from '../api/BeaconClient';
 import { DEFAULT_FLUSH_INTERVAL, DEFAULT_MAX_BUFFER_SIZE } from '../constants/defaults';
 
 export class BugTracker {
@@ -18,6 +19,7 @@ export class BugTracker {
     private userActionTracker: UserActionTracker | null = null;
     private widgetButton: WidgetButton;
     private client: Client;
+    private beaconClient: BeaconClient;
     private flushTimer: number | null = null;
     private isInitialized: boolean = false;
 
@@ -41,6 +43,7 @@ export class BugTracker {
 
         // Initialize components
         this.client = new Client(this.config.apiUrl, this.config.projectId);
+        this.beaconClient = new BeaconClient(this.config.apiUrl);
         this.sessionManager = new SessionManager(this.config.sessionTimeout!, this.client);
 
         // If integrator provided an explicit server session id (from server-side rendering), use it.
@@ -373,36 +376,27 @@ export class BugTracker {
 
         const { BugReportModal } = BugReportModalModule;
 
+        // Get numeric session ID for the report
+        const sessionId = Number(this.sessionManager.getSessionId());
+        const projectId = String(this.config.projectId);
+
         const modal = new BugReportModal(
-            async (report) => {
-                // Flush current events before sending bug report
+            this.beaconClient,
+            projectId,
+            sessionId,
+            async () => {
+                // onClose callback - executed after successful submission
+                // Flush current events before ending session
                 await this.eventBuffer.flush();
 
-                // Ensure screenshot is a string (send empty string if null)
-                const payload = {
-                    ...report,
-                    screenshot: report.screenshot ?? ''
-                };
-
-                // Send bug report - await the async call
-                await this.client.sendBugReport(
-                    payload,
-                    this.sessionManager.getSessionId(),
-                    this.sessionManager.getSessionData()
-                );
-
-                // Track as custom event (attach to the session that submitted the report)
-                this.trackEvent('BugReportSubmitted', {
-                    hasScreenshot: !!report.screenshot,
-                    commentLength: report.comment.length
-                });
+                // Track as custom event
+                this.trackEvent('BugReportSubmitted', {});
 
                 // Flush this event so it's definitely sent for the session that just reported
                 try {
                     await this.eventBuffer.flush();
                 } catch (e) {
                     console.error('[BugTracker] Failed to flush events after BugReportSubmitted:', e);
-                    // continue - we'll still attempt to end and recreate session
                 }
 
                 // End the current session and immediately create a fresh one
@@ -424,9 +418,6 @@ export class BugTracker {
                 if (this.config.debug) {
                     console.log('Bug report sent successfully');
                 }
-            },
-            () => {
-                // Modal closed
             }
         );
 

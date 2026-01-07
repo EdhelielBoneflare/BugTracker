@@ -44,6 +44,51 @@ export class BeaconClient {
         return navigator.sendBeacon(url, blob);
     }
 
+    /**
+     * Send bug report with multipart/form-data (JSON + screenshot file)
+     * Matches backend ReportCreationRequestWidget DTO
+     */
+    public async sendBugReportMultipart(
+        reportData: {
+            projectId: string;
+            sessionId: number;
+            title: string;
+            tags: string[];
+            reportedAt: string;
+            comments: string;
+            userEmail: string | null;
+            currentUrl: string;
+            userProvided: boolean;
+        },
+        screenshotBlob: Blob | null
+    ): Promise<boolean> {
+        const url = `${this.baseUrl}/api/reports`;
+
+        try {
+            const formData = new FormData();
+
+            // Add JSON metadata as a blob with application/json content type
+            formData.append('report', new Blob([JSON.stringify(reportData)], { type: 'application/json' }));
+
+            // Add screenshot file if provided (optional)
+            if (screenshotBlob) {
+                formData.append('screenshot', screenshotBlob, 'screenshot.jpg');
+            }
+
+            // Use fetch instead of sendBeacon for multipart/form-data
+            const response = await fetch(url, {
+                method: 'POST',
+                body: formData
+                // Do NOT set Content-Type header - browser sets it with boundary automatically
+            });
+
+            return response.ok;
+        } catch (error) {
+            console.error('Failed to send bug report:', error);
+            return false;
+        }
+    }
+
     public sendHeartbeat(sessionId: string, projectId: string): boolean {
         if (!navigator.sendBeacon) {
             return false;

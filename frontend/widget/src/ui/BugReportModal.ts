@@ -1,5 +1,6 @@
 // TypeScript
 import { ScreenshotCapturer } from './ScreenshotCapturer';
+import { BeaconClient } from '../api/BeaconClient';
 
 export class BugReportModal {
     private modal: HTMLElement | null = null;
@@ -8,22 +9,20 @@ export class BugReportModal {
     private screenshotData: string | null = null;
     private screenshotAllowed: boolean = false;
     private rememberConsentKey: string = 'bt_screenshot_allowed';
-    private onSubmit: (report: {
-        screenshot: string | null;
-        comment: string;
-        email?: string;
-    }) => Promise<void>;
+    private beaconClient: BeaconClient;
+    private projectId: string;
+    private sessionId: number;
     private onClose: () => void;
 
     constructor(
-        onSubmit: (report: {
-            screenshot: string | null;
-            comment: string;
-            email?: string;
-        }) => Promise<void>,
+        beaconClient: BeaconClient,
+        projectId: string,
+        sessionId: number,
         onClose: () => void
     ) {
-        this.onSubmit = onSubmit;
+        this.beaconClient = beaconClient;
+        this.projectId = projectId;
+        this.sessionId = sessionId;
         this.onClose = onClose;
         this.screenshotCapturer = new ScreenshotCapturer();
     }
@@ -118,7 +117,7 @@ export class BugReportModal {
         try {
             // Capture final screenshot (higher quality) if we already have one or attempt to capture
             let finalScreenshot: string | null = this.screenshotData;
-            if (!finalScreenshot) {
+            if (!finalScreenshot && this.screenshotAllowed) {
                 try {
                     finalScreenshot = await this.screenshotCapturer.captureFinal();
                 } catch (error) {
@@ -127,12 +126,31 @@ export class BugReportModal {
                 }
             }
 
-            // Submit report - await the async call
-            await this.onSubmit({
-                screenshot: finalScreenshot,
-                comment,
-                email: emailInput?.value.trim() || undefined
-            });
+            // Convert screenshot to blob if available
+            let screenshotBlob: Blob | null = null;
+            if (finalScreenshot) {
+                screenshotBlob = await this.screenshotCapturer.dataUrlToBlob(finalScreenshot);
+            }
+
+            // Build report data matching ReportCreationRequestWidget DTO
+            const reportData = {
+                projectId: this.projectId,
+                sessionId: this.sessionId,
+                title: comment.substring(0, 100),
+                tags: [],
+                reportedAt: new Date().toISOString(),
+                comments: comment,
+                userEmail: emailInput?.value.trim() || null,
+                currentUrl: window.location.href,
+                userProvided: true
+            };
+
+            // Send report with multipart form data
+            const success = await this.beaconClient.sendBugReportMultipart(reportData, screenshotBlob);
+
+            if (!success) {
+                throw new Error('Failed to submit report');
+            }
 
             // Close modal on success
             this.close();
