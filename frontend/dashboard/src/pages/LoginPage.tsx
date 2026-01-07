@@ -42,9 +42,11 @@ const LoginPage: React.FC = () => {
                 setTimeout(() => navigate('/dashboard'), 1000);
             } else {
                 setMessage({ type: 'error', text: 'Invalid username or password' });
+                setTimeout(() => 1000);
             }
         } catch (error) {
             setMessage({ type: 'error', text: 'An error occurred during login' });
+            setTimeout(() => 1000);
         } finally {
             setLoading(false);
         }
@@ -235,12 +237,6 @@ const LoginPage: React.FC = () => {
                         )}
                     </Box>
                 </Paper>
-
-                <Box sx={{ mt: 4, textAlign: 'center' }}>
-                    <Typography variant="body2" color="text.secondary">
-                        Test credentials: admin / admin123
-                    </Typography>
-                </Box>
             </Container>
         </div>
     );
