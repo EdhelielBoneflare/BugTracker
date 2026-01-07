@@ -27,6 +27,14 @@
 - Использование индексов в базе данных для ускорения операций чтения.
 - Вложения вынесены в отдельное хранилище для снижения нагрузки на БД.
 - Допускается возможность шардирования и партиционирования таблиц для масштабирования.
+
+### Диаграммы C4 Model
+###### Контекст
+<img width="1201" height="762" alt="bugtracker-Context drawio" src="https://github.com/user-attachments/assets/f0e996b0-892f-468f-a724-f45f395e78cc" />
+
+###### Контейнеры
+<img width="1401" height="721" alt="bugtracker-Container drawio" src="https://github.com/user-attachments/assets/f2299192-9ee0-433d-a87a-6e4f57e91dd8" />
+
 #### Контракты API
 Полную документацию API можно найти по ссылке: [API Documentation](http://localhost:8080/swagger-ui/)
 Основные эндпоинты:
