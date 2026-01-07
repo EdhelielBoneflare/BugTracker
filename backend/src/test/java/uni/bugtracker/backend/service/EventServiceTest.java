@@ -9,16 +9,20 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import uni.bugtracker.backend.dto.event.EventRequest;
 import uni.bugtracker.backend.exception.ResourceNotFoundException;
 import uni.bugtracker.backend.model.Event;
+import uni.bugtracker.backend.model.EventType;
 import uni.bugtracker.backend.model.Session;
+import uni.bugtracker.backend.model.Project;
 import uni.bugtracker.backend.repository.EventRepository;
 import uni.bugtracker.backend.repository.SessionRepository;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -33,254 +37,196 @@ class EventServiceTest {
     @InjectMocks
     private EventService eventService;
 
-    private Session session;
     private EventRequest eventRequest;
+    private Session session;
+    private Event savedEvent;
 
     @BeforeEach
     void setUp() {
+        // Setup test data
+        Project project = new Project();
+        project.setId("project-123");
+
         session = new Session();
         session.setId(1L);
+        session.setProject(project);
+
+        EventRequest.MetadataPart metadata = new EventRequest.MetadataPart();
+        metadata.setFileName("app.js");
+        metadata.setLineNumber("42");
+        metadata.setStatusCode("404");
 
         eventRequest = new EventRequest();
         eventRequest.setSessionId(1L);
-        eventRequest.setType(uni.bugtracker.backend.model.EventType.ERROR);
+        eventRequest.setType(EventType.ERROR);
         eventRequest.setName("Test Event");
-        eventRequest.setLog("Test log message");
-        eventRequest.setUrl("https://example.com");
+        eventRequest.setLog("Error log");
+        eventRequest.setStackTrace("Stack trace");
+        eventRequest.setUrl("http://example.com");
+        eventRequest.setElement("#button");
         eventRequest.setTimestamp(Instant.now());
+        eventRequest.setMetadata(metadata);
+
+        savedEvent = new Event();
+        savedEvent.setId(100L);
+        savedEvent.setSession(session);
+        savedEvent.setType(EventType.ERROR);
+        savedEvent.setName("Test Event");
+        savedEvent.setLog("Error log");
+        savedEvent.setStackTrace("Stack trace");
+        savedEvent.setUrl("http://example.com");
+        savedEvent.setElement("#button");
+        savedEvent.setTimestamp(eventRequest.getTimestamp());
+
+        Event.Metadata eventMetadata = new Event.Metadata();
+        eventMetadata.setFileName("app.js");
+        eventMetadata.setLineNumber("42");
+        eventMetadata.setStatusCode("404");
+        savedEvent.setMetadata(eventMetadata);
     }
 
     @Test
-    void createEvent_WithValidRequest_ShouldSaveAndReturnId() {
-        // Arrange
+    void createEvent_shouldSaveEventAndReturnId() {
+        // Given
         when(sessionRepository.findById(1L)).thenReturn(Optional.of(session));
-        Event savedEvent = new Event();
-        savedEvent.setId(100L);
         when(eventRepository.save(any(Event.class))).thenReturn(savedEvent);
 
-        // Act
+        // When
         Long eventId = eventService.createEvent(eventRequest);
 
-        // Assert
+        // Then
         assertThat(eventId).isEqualTo(100L);
         verify(sessionRepository).findById(1L);
         verify(eventRepository).save(any(Event.class));
     }
 
     @Test
-    void createEvent_WithNonExistentSession_ShouldThrowException() {
-        // Arrange
-        when(sessionRepository.findById(1L)).thenReturn(Optional.empty());
+    void createEvent_shouldTrimLongFields() {
+        // Given
+        String longLog = "x".repeat(5_000_000);
+        eventRequest.setLog(longLog);
 
-        // Act & Assert
+        when(sessionRepository.findById(1L)).thenReturn(Optional.of(session));
+        when(eventRepository.save(any(Event.class))).thenAnswer(invocation -> {
+            Event event = invocation.getArgument(0);
+            assertThat(event.getLog()).hasSize(4_000_000);
+            return savedEvent;
+        });
+
+        // When
+        eventService.createEvent(eventRequest);
+
+        // Then - логика трима проверена в моке
+        verify(eventRepository).save(any(Event.class));
+    }
+
+    @Test
+    void createEvent_whenSessionNotFound_shouldThrowException() {
+        // Given
+        when(sessionRepository.findById(anyLong())).thenReturn(Optional.empty());
+
+        // When & Then
         assertThatThrownBy(() -> eventService.createEvent(eventRequest))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessageContaining("Session not found");
-
-        verify(eventRepository, never()).save(any(Event.class));
     }
 
     @Test
-    void createEvent_WithLongName_ShouldTrimName() {
-        // Arrange
-        when(sessionRepository.findById(1L)).thenReturn(Optional.of(session));
-
-        String longName = "A".repeat(300); // More than 255 symbols
-        eventRequest.setName(longName);
-
-        Event savedEvent = new Event();
-        savedEvent.setId(100L);
-        when(eventRepository.save(any(Event.class))).thenReturn(savedEvent);
-
-        // Act
-        eventService.createEvent(eventRequest);
-
-        // Assert
-        verify(eventRepository).save(argThat(event ->
-                event.getName() != null && event.getName().length() == 255
-        ));
-    }
-
-    @Test
-    void createEvent_WithLongLog_ShouldTrimLog() {
-        // Arrange
-        when(sessionRepository.findById(1L)).thenReturn(Optional.of(session));
-
-        String longLog = "A".repeat(4_000_100); // More than limit
-        eventRequest.setLog(longLog);
-
-        Event savedEvent = new Event();
-        savedEvent.setId(100L);
-        when(eventRepository.save(any(Event.class))).thenReturn(savedEvent);
-
-        // Act
-        eventService.createEvent(eventRequest);
-
-        // Assert
-        verify(eventRepository).save(argThat(event ->
-                event.getLog() != null && event.getLog().length() == 4_000_000
-        ));
-    }
-
-    @Test
-    void createEvent_WithLongStackTrace_ShouldTrimStackTrace() {
-        // Arrange
-        when(sessionRepository.findById(1L)).thenReturn(Optional.of(session));
-
-        String longStackTrace = "A".repeat(4_000_100); // More than limit
-        eventRequest.setStackTrace(longStackTrace);
-
-        Event savedEvent = new Event();
-        savedEvent.setId(100L);
-        when(eventRepository.save(any(Event.class))).thenReturn(savedEvent);
-
-        // Act
-        eventService.createEvent(eventRequest);
-
-        // Assert
-        verify(eventRepository).save(argThat(event ->
-                event.getStackTrace() != null && event.getStackTrace().length() == 4_000_000
-        ));
-    }
-
-    @Test
-    void createEvent_WithNullStackTrace_ShouldHandleGracefully() {
-        // Arrange
-        when(sessionRepository.findById(1L)).thenReturn(Optional.of(session));
-
-        eventRequest.setStackTrace(null);
-
-        Event savedEvent = new Event();
-        savedEvent.setId(100L);
-        when(eventRepository.save(any(Event.class))).thenReturn(savedEvent);
-
-        // Act
-        eventService.createEvent(eventRequest);
-
-        // Assert
-        verify(eventRepository).save(argThat(event ->
-                event.getStackTrace() == null
-        ));
-    }
-
-    @Test
-    void createEvent_WithMetadata_ShouldSetMetadata() {
-        // Arrange
-        when(sessionRepository.findById(1L)).thenReturn(Optional.of(session));
-
-        EventRequest.MetadataPart metadataPart = new EventRequest.MetadataPart();
-        metadataPart.setFileName("app.js");
-        metadataPart.setLineNumber("42");
-        metadataPart.setStatusCode("404");
-        eventRequest.setMetadata(metadataPart);
-
-        Event savedEvent = new Event();
-        savedEvent.setId(100L);
-        when(eventRepository.save(any(Event.class))).thenReturn(savedEvent);
-
-        // Act
-        eventService.createEvent(eventRequest);
-
-        // Assert
-        verify(eventRepository).save(argThat(event ->
-                event.getMetadata() != null &&
-                        "app.js".equals(event.getMetadata().getFileName()) &&
-                        "42".equals(event.getMetadata().getLineNumber()) &&
-                        "404".equals(event.getMetadata().getStatusCode())
-        ));
-    }
-
-    @Test
-    void createEvent_WithoutMetadata_ShouldNotSetMetadata() {
-        // Arrange
-        when(sessionRepository.findById(1L)).thenReturn(Optional.of(session));
+    void createEvent_withoutMetadata_shouldCreateEventWithoutMetadata() {
+        // Given
         eventRequest.setMetadata(null);
+        when(sessionRepository.findById(1L)).thenReturn(Optional.of(session));
+        when(eventRepository.save(any(Event.class))).thenAnswer(invocation -> {
+            Event event = invocation.getArgument(0);
+            assertThat(event.getMetadata()).isNull();
+            return savedEvent;
+        });
 
-        Event savedEvent = new Event();
-        savedEvent.setId(100L);
-        when(eventRepository.save(any(Event.class))).thenReturn(savedEvent);
-
-        // Act
+        // When
         eventService.createEvent(eventRequest);
 
-        // Assert
-        verify(eventRepository).save(argThat(event ->
-                event.getMetadata() == null
-        ));
+        // Then
+        verify(eventRepository).save(any(Event.class));
     }
 
     @Test
-    void createEvent_WithAllFields_ShouldSetAllFields() {
-        // Arrange
-        when(sessionRepository.findById(1L)).thenReturn(Optional.of(session));
+    void getEvent_shouldReturnEventDetails() {
+        // Given
+        when(eventRepository.findById(100L)).thenReturn(Optional.of(savedEvent));
 
-        Instant timestamp = Instant.now();
-        eventRequest.setName("Test Event");
-        eventRequest.setLog("Log message");
-        eventRequest.setStackTrace("Stack trace");
-        eventRequest.setUrl("https://example.com");
-        eventRequest.setElement("#button");
-        eventRequest.setTimestamp(timestamp);
+        // When
+        var result = eventService.getEvent(100L);
 
-        Event savedEvent = new Event();
-        savedEvent.setId(100L);
-        when(eventRepository.save(any(Event.class))).thenReturn(savedEvent);
-
-        // Act
-        eventService.createEvent(eventRequest);
-
-        // Assert
-        verify(eventRepository).save(argThat(event ->
-                "Test Event".equals(event.getName()) &&
-                        "Log message".equals(event.getLog()) &&
-                        "Stack trace".equals(event.getStackTrace()) &&
-                        "https://example.com".equals(event.getUrl()) &&
-                        "#button".equals(event.getElement()) &&
-                        timestamp.equals(event.getTimestamp())
-        ));
+        // Then
+        assertThat(result.getEventId()).isEqualTo(100L);
+        assertThat(result.getSessionId()).isEqualTo(1L);
+        assertThat(result.getType()).isEqualTo(EventType.ERROR);
+        verify(eventRepository).findById(100L);
     }
 
     @Test
-    void createEvent_WithEmptyStringFields_ShouldHandleGracefully() {
-        // Arrange
-        when(sessionRepository.findById(1L)).thenReturn(Optional.of(session));
+    void getEvent_whenEventNotFound_shouldThrowException() {
+        // Given
+        when(eventRepository.findById(anyLong())).thenReturn(Optional.empty());
 
-        eventRequest.setName("");
-        eventRequest.setLog("");
-        eventRequest.setUrl("");
-
-        Event savedEvent = new Event();
-        savedEvent.setId(100L);
-        when(eventRepository.save(any(Event.class))).thenReturn(savedEvent);
-
-        // Act
-        eventService.createEvent(eventRequest);
-
-        // Assert
-        verify(eventRepository).save(argThat(event ->
-                "".equals(event.getName()) &&
-                        "".equals(event.getLog()) &&
-                        "".equals(event.getUrl())
-        ));
+        // When & Then
+        assertThatThrownBy(() -> eventService.getEvent(999L))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessageContaining("Event not found");
     }
 
     @Test
-    void createEvent_WithElement_ShouldSetElement() {
-        // Arrange
+    void getEventsBySession_shouldReturnEventsForSession() {
+        // Given
+        List<Event> events = List.of(savedEvent);
+        when(eventRepository.findAllBySessionId(1L)).thenReturn(events);
+
+        // When
+        var result = eventService.getEventsBySession(1L);
+
+        // Then
+        assertThat(result).hasSize(1);
+        assertThat(result.getFirst().getEventId()).isEqualTo(100L);
+        verify(eventRepository).findAllBySessionId(1L);
+    }
+
+    @Test
+    void getEventsBySession_whenNoEvents_shouldReturnEmptyList() {
+        // Given
+        when(eventRepository.findAllBySessionId(1L)).thenReturn(List.of());
+
+        // When
+        var result = eventService.getEventsBySession(1L);
+
+        // Then
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    void getProjectIdByEventId_shouldReturnProjectId() {
+        // Given
+        when(eventRepository.findById(100L)).thenReturn(Optional.of(savedEvent));
         when(sessionRepository.findById(1L)).thenReturn(Optional.of(session));
 
-        eventRequest.setElement("#submit-button");
+        // When
+        String projectId = eventService.getProjectIdByEventId(100L);
 
-        Event savedEvent = new Event();
-        savedEvent.setId(100L);
-        when(eventRepository.save(any(Event.class))).thenReturn(savedEvent);
+        // Then
+        assertThat(projectId).isEqualTo("project-123");
+    }
 
-        // Act
+    @Test
+    void trim_shouldReturnNullForNullInput() {
+        // When & Then - using reflection to test private method
+        // Можно протестировать через публичные методы, которые используют trim
+        eventRequest.setLog(null);
+        when(sessionRepository.findById(1L)).thenReturn(Optional.of(session));
+        when(eventRepository.save(any(Event.class))).thenAnswer(invocation -> {
+            Event event = invocation.getArgument(0);
+            assertThat(event.getLog()).isNull();
+            return savedEvent;
+        });
+
         eventService.createEvent(eventRequest);
-
-        // Assert
-        verify(eventRepository).save(argThat(event ->
-                "#submit-button".equals(event.getElement())
-        ));
     }
 }

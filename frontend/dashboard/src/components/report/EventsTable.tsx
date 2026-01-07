@@ -10,7 +10,6 @@ import {
     TableHead,
     TableRow,
     Paper,
-    Box,
 } from '@mui/material';
 import { BugReport } from '@mui/icons-material';
 import { Event } from '../../types/types';

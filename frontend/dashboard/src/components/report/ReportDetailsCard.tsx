@@ -23,10 +23,10 @@ import { Report, ReportStatus, CriticalityLevel } from '../../types/types';
 
 export interface ReportEditData {
     status: ReportStatus;
-    criticality: CriticalityLevel;
+    level: CriticalityLevel;
     comments: string;
-    projectId?: string; // Добавляем
-    developerName?: string; // Добавляем
+    projectId?: string;
+    developerName?: string;
 }
 
 interface ReportDetailsCardProps {
@@ -34,8 +34,8 @@ interface ReportDetailsCardProps {
     editing: boolean;
     editData: ReportEditData;
     onEditDataChange: (field: keyof ReportEditData, value: any) => void;
-    getCriticalityLabel: (criticality: CriticalityLevel) => string;
-    getCriticalityColor: (criticality: CriticalityLevel) => string;
+    getCriticalityLabel: (level: CriticalityLevel) => string;
+    getCriticalityColor: (level: CriticalityLevel) => string;
     getStatusColor: (status: ReportStatus) => string;
 }
 
@@ -48,6 +48,7 @@ const ReportDetailsCard: React.FC<ReportDetailsCardProps> = ({
                                                                  getCriticalityColor,
                                                                  getStatusColor,
                                                              }) => {
+
     return (
         <Card>
             <CardContent>
@@ -73,8 +74,8 @@ const ReportDetailsCard: React.FC<ReportDetailsCardProps> = ({
                                 <FormControl size="small" sx={{ minWidth: 120 }}>
                                     <InputLabel>Criticality</InputLabel>
                                     <Select
-                                        value={editData.criticality}
-                                        onChange={(e) => onEditDataChange('criticality', e.target.value as CriticalityLevel)}
+                                        value={editData.level}
+                                        onChange={(e) => onEditDataChange('level', e.target.value as CriticalityLevel)}
                                         label="Criticality"
                                     >
                                         <MenuItem value={CriticalityLevel.LOW}>Low</MenuItem>
@@ -88,8 +89,8 @@ const ReportDetailsCard: React.FC<ReportDetailsCardProps> = ({
                         ) : (
                             <>
                                 <Chip
-                                    label={getCriticalityLabel(report.criticality)}
-                                    color={getCriticalityColor(report.criticality) as any}
+                                    label={getCriticalityLabel(report.level)}
+                                    color={getCriticalityColor(report.level) as any}
                                     size="medium"
                                     variant="outlined"
                                 />
@@ -241,15 +242,6 @@ const ReportDetailsCard: React.FC<ReportDetailsCardProps> = ({
                             </Typography>
                         </Box>
                     )}
-
-                    {report.screen && (
-                        <Box sx={{ gridColumn: 'span 2' }}>
-                            <Typography variant="body2" display="flex" alignItems="center" gap={1} component="div">
-                                <strong>Screen Info:</strong> {report.screen}
-                            </Typography>
-                        </Box>
-                    )}
-
                     <Box>
                         <Typography variant="body2" display="flex" alignItems="center" gap={1} component="div">
                             <Schedule fontSize="small" />

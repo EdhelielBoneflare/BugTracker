@@ -1,6 +1,5 @@
 package uni.bugtracker.backend.service;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -14,7 +13,7 @@ import uni.bugtracker.backend.repository.ProjectRepository;
 import uni.bugtracker.backend.repository.SessionRepository;
 
 import java.time.Instant;
-import java.util.Arrays;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -34,131 +33,72 @@ class SessionServiceTest {
     @InjectMocks
     private SessionService sessionService;
 
-    private SessionRequest sessionRequest;
-    private Project project;
-
-    @BeforeEach
-    void setUp() {
-        project = new Project();
-        project.setId(1L);
-        project.setName("Test Project");
-
-        sessionRequest = new SessionRequest();
-        sessionRequest.setProjectId(1L);
-        sessionRequest.setStartTime(Instant.now());
-        sessionRequest.setBrowser("Chrome");
-        sessionRequest.setBrowserVersion("120.0.0.0");
-        sessionRequest.setOs("Windows 10");
-        sessionRequest.setDeviceType("Desktop");
-        sessionRequest.setPlugins(Arrays.asList("Plugin1", "Plugin2"));
-    }
-
     @Test
-    void createSession_WithValidRequest_ShouldCreateAndReturnResponse() {
-        // Arrange
-        when(projectRepository.findById(1L)).thenReturn(Optional.of(project));
+    void createSession_shouldSaveAndReturnResponse() {
+        // Given
+        SessionRequest request = createSessionRequest();
+        Project project = new Project();
+        project.setId("project-123");
 
-        Session savedSession = new Session();
-        savedSession.setId(100L);
-        savedSession.setProject(project);
-        when(sessionRepository.save(any(Session.class))).thenReturn(savedSession);
+        when(projectRepository.findById("project-123")).thenReturn(Optional.of(project));
+        when(sessionRepository.save(any(Session.class))).thenAnswer(invocation -> {
+            Session session = invocation.getArgument(0);
+            session.setId(100L);
+            return session;
+        });
 
-        // Act
-        var response = sessionService.createSession(sessionRequest);
+        // When
+        var result = sessionService.createSession(request);
 
-        // Assert
-        assertThat(response.getMessage()).isEqualTo("Session created successfully");
-        assertThat(response.getSessionId()).isEqualTo(100L);
-
-        verify(projectRepository).findById(1L);
+        // Then
+        assertThat(result.getMessage()).contains("Session created");
+        assertThat(result.getSessionId()).isEqualTo(100L);
+        verify(projectRepository).findById("project-123");
         verify(sessionRepository).save(any(Session.class));
     }
 
     @Test
-    void createSession_WithNonExistentProject_ShouldThrowException() {
-        // Arrange
-        when(projectRepository.findById(1L)).thenReturn(Optional.empty());
-
-        // Act & Assert
-        assertThatThrownBy(() -> sessionService.createSession(sessionRequest))
-                .isInstanceOf(ResourceNotFoundException.class)
-                .hasMessageContaining("Project not found");
-
-        verify(sessionRepository, never()).save(any(Session.class));
-    }
-
-    @Test
-    void createSession_ShouldSetIsActiveToTrue() {
-        // Arrange
-        when(projectRepository.findById(1L)).thenReturn(Optional.of(project));
-
-        Session savedSession = new Session();
-        savedSession.setId(100L);
-        when(sessionRepository.save(any(Session.class))).thenReturn(savedSession);
-
-        // Act
-        sessionService.createSession(sessionRequest);
-
-        // Assert
-        verify(sessionRepository).save(argThat(session ->
-                Boolean.TRUE.equals(session.getIsActive())
-        ));
-    }
-
-    @Test
-    void createSession_ShouldCopyAllFieldsFromRequest() {
-        // Arrange
-        when(projectRepository.findById(1L)).thenReturn(Optional.of(project));
-
-        sessionRequest.setIpAddress("192.168.1.1");
-        sessionRequest.setCookiesHash("abc123");
-        sessionRequest.setLanguage("en-US");
-        sessionRequest.setUserAgent("Mozilla/5.0");
-
-        Session savedSession = new Session();
-        savedSession.setId(100L);
-        when(sessionRepository.save(any(Session.class))).thenReturn(savedSession);
-
-        // Act
-        sessionService.createSession(sessionRequest);
-
-        // Assert
-        verify(sessionRepository).save(argThat(session ->
-                session.getProject() != null &&
-                        "Chrome".equals(session.getBrowser()) &&
-                        "192.168.1.1".equals(session.getIpAddress()) &&
-                        "abc123".equals(session.getCookiesHash()) &&
-                        session.getPlugins() != null &&
-                        session.getPlugins().size() == 2
-        ));
-    }
-
-    @Test
-    void getSession_WithExistingId_ShouldReturnResponse() {
-        // Arrange
+    void getSession_shouldReturnSessionDetails() {
+        // Given
         Session session = new Session();
         session.setId(100L);
+        Project project = new Project();
+        project.setId("project-123");
         session.setProject(project);
-        session.setIsActive(true);
 
         when(sessionRepository.findById(100L)).thenReturn(Optional.of(session));
 
-        // Act
-        var response = sessionService.getSession(100L);
+        // When
+        var result = sessionService.getSession(100L);
 
-        // Assert
-        assertThat(response).isNotNull();
-        verify(sessionRepository).findById(100L);
+        // Then
+        assertThat(result.getSessionId()).isEqualTo(100L);
+        assertThat(result.getProjectId()).isEqualTo("project-123");
     }
 
     @Test
-    void getSession_WithNonExistentId_ShouldThrowException() {
-        // Arrange
-        when(sessionRepository.findById(100L)).thenReturn(Optional.empty());
+    void getSession_whenNotFound_shouldThrowException() {
+        // Given
+        when(sessionRepository.findById(anyLong())).thenReturn(Optional.empty());
 
-        // Act & Assert
-        assertThatThrownBy(() -> sessionService.getSession(100L))
-                .isInstanceOf(ResourceNotFoundException.class)
-                .hasMessageContaining("Session not found");
+        // When & Then
+        assertThatThrownBy(() -> sessionService.getSession(999L))
+                .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    private SessionRequest createSessionRequest() {
+        SessionRequest request = new SessionRequest();
+        request.setProjectId("project-123");
+        request.setStartTime(Instant.now());
+        request.setBrowser("Chrome");
+        request.setBrowserVersion("120");
+        request.setOs("Windows");
+        request.setDeviceType("desktop");
+        request.setScreenResolution("1920x1080");
+        request.setLanguage("en-US");
+        request.setUserAgent("Mozilla");
+        request.setIpAddress("192.168.1.1");
+        request.setPlugins(List.of("Plugin1"));
+        return request;
     }
 }

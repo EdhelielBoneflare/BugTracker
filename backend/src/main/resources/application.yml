@@ -12,7 +12,24 @@ spring:
     hibernate:
       ddl-auto: update
     show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
 
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 15MB
+      max-request-size: 15MB
+  web:
+    error:
+      include-message: always
+      include-binding-errors: always
+
+server:
+  port: 8080
+
+# JWT настройки
 jwt:
   secret: ${JWT_SECRET}
   expiration-time: 3600000
@@ -23,16 +40,24 @@ session:
 
 openrouter.api.key: ${OPENAI_KEY}
 
+# Swagger/OpenAPI
 springdoc:
   api-docs:
     path: /v3/api-docs
+    enabled: true
   swagger-ui:
     path: /swagger-ui.html
     operations-sorter: method
     tags-sorter: alpha
+    enabled: true
 
-# CORS: можно настроить список разрешённых origin через свойство app.cors.allowed-origins
-# Пример (comma-separated):
+# CORS настройки
 app:
   cors:
-    allowed-origins: "https://edhelielboneflare.github.io,http://localhost:*"
+    allowed-origins: "http://localhost:3000,http://localhost:3001,http://127.0.0.1:3000,http://127.0.0.1:3001"
+
+# Логирование для отладки CORS
+logging:
+  level:
+    org.springframework.web.cors: DEBUG
+    uni.bugtracker.backend: DEBUG

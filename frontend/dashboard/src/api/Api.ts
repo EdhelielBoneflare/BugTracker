@@ -23,6 +23,7 @@ class ApiClient {
             const response = await fetch(`${this.baseUrl}${endpoint}`, {
                 ...options,
                 headers,
+                credentials: 'include',
             });
 
             this.logRequest(options.method || 'GET', endpoint, response.status);
@@ -36,13 +37,28 @@ class ApiClient {
                 await this.handleErrorResponse(response);
             }
 
-            if (response.status === 204) {
+            // Обновляем токен из заголовка ответа, если он есть
+            const newToken = response.headers.get('Authorization');
+            if (newToken && newToken.startsWith('Bearer ')) {
+                const tokenValue = newToken.replace('Bearer ', '');
+                this.setToken(tokenValue);
+            }
+
+            if (response.status === 204 || response.headers.get('content-length') === '0') {
                 return null as T;
             }
 
-            return await response.json();
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                return await response.json();
+            } else {
+                return {} as T;
+            }
         } catch (error) {
             console.error(`API request error (${endpoint}):`, error);
+            if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+                console.error('CORS or network error detected. Check backend CORS configuration.');
+            }
             throw error;
         }
     }
@@ -50,6 +66,7 @@ class ApiClient {
     private prepareHeaders(inputHeaders?: HeadersInit): Record<string, string> {
         const headers: Record<string, string> = {
             'Content-Type': 'application/json',
+            'Accept': 'application/json',
         };
 
         if (!inputHeaders) return headers;
@@ -86,7 +103,6 @@ class ApiClient {
         try {
             errorData = await response.json();
         } catch {
-            // Ignore JSON parse errors
         }
 
         const errorMessage =
@@ -111,7 +127,7 @@ class ApiClient {
 
     // ============ АВТОРИЗАЦИЯ ============
     async login(username: string, password: string) {
-        return this.request<{
+        const result = await this.request<{
             token: string;
             username: string;
             role: string;
@@ -120,6 +136,12 @@ class ApiClient {
             method: 'POST',
             body: JSON.stringify({ username, password }),
         });
+
+        if (result.token) {
+            this.setToken(result.token);
+        }
+
+        return result;
     }
 
     async register(username: string, password: string) {
@@ -177,7 +199,7 @@ class ApiClient {
 
     async updateReportDashboard(reportId: number, data: {
         status?: string;
-        criticality?: string;
+        level?: string;
         comments?: string;
         projectId?: string;
         developerName?: string;
@@ -269,6 +291,13 @@ class ApiClient {
     async removeUserFromProject(userId: string, projectId: string): Promise<User> {
         return this.request(`/api/users/${userId}/projects/remove/${projectId}`, {
             method: 'PATCH',
+        });
+    }
+
+    // ============ МЕТОД ДЛЯ ОТЛАДКИ CORS ============
+    async testCors(): Promise<string> {
+        return this.request('/auth/test-cors', {
+            method: 'GET',
         });
     }
 }

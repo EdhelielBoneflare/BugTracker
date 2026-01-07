@@ -8,7 +8,6 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
-import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -45,9 +44,8 @@ public class SecurityConfig {
     @Value("${app.cors.allowed-origins:}")
     private String allowedOriginsProperty;
 
-
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http, CorsConfigurationSource corsConfigurationSource) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
@@ -82,7 +80,7 @@ public class SecurityConfig {
                 .exceptionHandling(config -> config
                         .authenticationEntryPoint(authEntryPoint) // 401
                         .accessDeniedHandler(accessDeniedHandler) // 403
-                );;
+                );
 
         return http.build();
     }
@@ -91,7 +89,6 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
 
-        // Если в application.yml прописаны allowed origins - используем их
         if (allowedOriginsProperty != null && !allowedOriginsProperty.isBlank()) {
             List<String> origins = Arrays.stream(allowedOriginsProperty.split(","))
                     .map(String::trim)
@@ -99,20 +96,26 @@ public class SecurityConfig {
                     .collect(Collectors.toList());
             config.setAllowedOrigins(origins);
         } else {
-            // DEV fallback: разрешаем локальные origin с любым портом
-            config.setAllowedOriginPatterns(List.of(
-                    "http://localhost:*",
-                    "http://127.0.0.1:*",
-                    "https://localhost:*",
-                    "https://127.0.0.1:*"
+            config.setAllowedOrigins(Arrays.asList(
+                    "http://localhost:3000",
+                    "http://localhost:3001",
+                    "http://127.0.0.1:3000",
+                    "http://127.0.0.1:3001"
             ));
         }
 
-        config.setAllowedMethods(List.of("GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"));
-        config.setAllowedHeaders(List.of("*"));
-        config.setExposedHeaders(List.of("*"));
-        // Для cookie-based auth может потребоваться true; с JWT обычно достаточно false
-        config.setAllowCredentials(false);
+        config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
+        config.setAllowedHeaders(Arrays.asList("*"));
+
+        // заголовки, которые нужны фронтенду
+        config.setExposedHeaders(Arrays.asList(
+                "Authorization",
+                "Content-Disposition",
+                "Content-Type",
+                "Cache-Control"
+        ));
+
+        config.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
@@ -133,8 +136,7 @@ public class SecurityConfig {
     }
 
     @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
+    public AuthenticationManager authenticationManager(org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
     }
 }
-

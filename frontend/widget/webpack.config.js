@@ -1,15 +1,18 @@
 const path = require('path');
+const TerserPlugin = require('terser-webpack-plugin');
 
 module.exports = {
-    entry: './src/types.ts',
+    entry: './src/index.ts',
     output: {
         filename: 'bugtracker.bundle.js',
         path: path.resolve(__dirname, 'dist'),
         library: {
             name: 'BugTracker',
-            type: 'umd'
+            type: 'umd',
+            export: 'default'
         },
-        globalObject: "typeof self !== 'undefined' ? self : this"
+        globalObject: "typeof self !== 'undefined' ? self : this",
+        clean: true
     },
     resolve: {
         extensions: ['.ts', '.js']
@@ -23,5 +26,23 @@ module.exports = {
             }
         ]
     },
-    mode: 'production'
+    mode: 'production',
+    devtool: false,
+    optimization: {
+        splitChunks: false,
+        runtimeChunk: false,
+        minimizer: [
+            new TerserPlugin({
+                extractComments: false,
+                terserOptions: {
+                    compress: {
+                        drop_console: false
+                    }
+                }
+            })
+        ]
+    },
+    externals: {
+        html2canvas: 'html2canvas'
+    }
 };

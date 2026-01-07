@@ -38,10 +38,10 @@ export interface Report {
     id: number;
     title: string;
     comments?: string;
-    criticality: CriticalityLevel;
+    level: CriticalityLevel;
     currentUrl?: string;
     reportedAt: string;
-    screen?: string;
+    screenUrl: string | null;
     status: ReportStatus;
     userEmail?: string;
     userProvided?: boolean;

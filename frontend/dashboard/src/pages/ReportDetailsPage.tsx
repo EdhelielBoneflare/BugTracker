@@ -1,14 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import {
-    Box,
-    CircularProgress,
-    Alert,
-    Stack,
-} from '@mui/material';
-import { api } from '../api/Api';
-import { Report, Session, Event, ReportStatus, CriticalityLevel } from '../types/types';
-import { useAuth } from '../contexts/AuthContext';
+import React, {useEffect, useState} from 'react';
+import {useNavigate, useParams} from 'react-router-dom';
+import {Alert, Box, Button, CircularProgress, Paper, Stack, Typography,} from '@mui/material';
+import {ImageNotSupported, ZoomIn} from '@mui/icons-material';
+import {api} from '../api/Api';
+import {CriticalityLevel, Event, Report, ReportStatus, Session} from '../types/types';
+import {useAuth} from '../contexts/AuthContext';
 import ReportHeader from '../components/report/ReportHeader';
 import ReportDetailsCard from '../components/report/ReportDetailsCard';
 import SessionDetailsCard from '../components/report/SessionDetailsCard';
@@ -24,27 +20,15 @@ const ReportDetailsPage: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [editing, setEditing] = useState(false);
+    const [screenshotUrl, setScreenshotUrl] = useState<string | null>(null);
+    const [fullscreenScreenshot, setFullscreenScreenshot] = useState(false);
     const [editData, setEditData] = useState({
         status: ReportStatus.NEW,
-        criticality: CriticalityLevel.UNKNOWN,
+        level: CriticalityLevel.UNKNOWN,
         comments: '',
-        projectId: '', // Добавлено
-        developerName: '', // Добавлено
+        projectId: '',
+        developerName: '',
     });
-
-    const canEditReport = () => {
-        return isAdmin();
-    };
-
-    const normalizeCriticality = (data: any): CriticalityLevel => {
-        if (data.criticality && Object.values(CriticalityLevel).includes(data.criticality)) {
-            return data.criticality;
-        }
-        if (data.level && Object.values(CriticalityLevel).includes(data.level)) {
-            return data.level;
-        }
-        return CriticalityLevel.UNKNOWN;
-    };
 
     useEffect(() => {
         if (reportId) {
@@ -59,7 +43,7 @@ const ReportDetailsPage: React.FC = () => {
 
             const processedReport = {
                 ...reportData,
-                criticality: normalizeCriticality(reportData),
+                level: reportData.level || CriticalityLevel.UNKNOWN,
                 developerName: reportData.developerName || (reportData as any)?.developerName || null,
                 status: reportData.status || ReportStatus.NEW,
                 comments: reportData.comments || '',
@@ -67,20 +51,31 @@ const ReportDetailsPage: React.FC = () => {
                 userProvided: Boolean(reportData.userProvided || (reportData as any)?.userProvided || false),
                 sessionId: reportData.sessionId || (reportData as any)?.sessionId || null,
                 currentUrl: reportData.currentUrl || (reportData as any)?.currentUrl || '',
-                screen: reportData.screen || (reportData as any)?.screen || '',
+                screenUrl: reportData.screenUrl || (reportData as any)?.screenUrl || null,
                 tags: reportData.tags || (reportData as any)?.tags || [],
             };
 
             console.log('📊 Report data:', processedReport);
+            console.log('📸 Screenshot URL:', processedReport.screenUrl);
 
             setReport(processedReport as Report);
 
+            if (processedReport.screenUrl) {
+                if (processedReport.screenUrl.startsWith('/')) {
+                    setScreenshotUrl(`http://localhost:8080${processedReport.screenUrl}`);
+                } else {
+                    setScreenshotUrl(processedReport.screenUrl);
+                }
+            } else if (processedReport.id) {
+                setScreenshotUrl(`http://localhost:8080/api/reports/${processedReport.id}/screenshot`);
+            }
+
             setEditData({
                 status: processedReport.status,
-                criticality: normalizeCriticality(processedReport),
+                level: processedReport.level,
                 comments: processedReport.comments,
-                projectId: processedReport.projectId || '', // Добавлено
-                developerName: processedReport.developerName || '', // Добавлено
+                projectId: processedReport.projectId || '',
+                developerName: processedReport.developerName || '',
             });
 
             if (processedReport.sessionId) {
@@ -141,13 +136,13 @@ const ReportDetailsPage: React.FC = () => {
         }
     };
 
-    const getCriticalityLabel = (criticality: CriticalityLevel) => {
-        switch(criticality) {
+    const getCriticalityLabel = (level: CriticalityLevel) => {
+        switch(level) {
             case CriticalityLevel.CRITICAL: return 'Critical';
             case CriticalityLevel.HIGH: return 'High';
             case CriticalityLevel.MEDIUM: return 'Medium';
             case CriticalityLevel.LOW: return 'Low';
-            default: return String(criticality);
+            default: return String(level);
         }
     };
 
@@ -166,15 +161,15 @@ const ReportDetailsPage: React.FC = () => {
         try {
             const updatedReport = await api.updateReportDashboard(report.id, {
                 status: editData.status,
-                criticality: editData.criticality,
+                level: editData.level,
                 comments: editData.comments,
-                projectId: editData.projectId || undefined, // Добавлено
-                developerName: editData.developerName || undefined, // Добавлено
+                projectId: editData.projectId || undefined,
+                developerName: editData.developerName || undefined,
             });
 
             const processedReport = {
                 ...updatedReport,
-                criticality: normalizeCriticality(updatedReport),
+                level: updatedReport.level,
             };
 
             setReport(processedReport as Report);
@@ -189,10 +184,10 @@ const ReportDetailsPage: React.FC = () => {
         if (!report) return;
         setEditData({
             status: report.status || ReportStatus.NEW,
-            criticality: normalizeCriticality(report),
+            level: report.level || CriticalityLevel.UNKNOWN,
             comments: report.comments || '',
-            projectId: report.projectId || '', // Добавлено
-            developerName: report.developerName || '', // Добавлено
+            projectId: report.projectId || '',
+            developerName: report.developerName || '',
         });
         setEditing(false);
     };
@@ -230,7 +225,6 @@ const ReportDetailsPage: React.FC = () => {
             <ReportHeader
                 report={report}
                 editing={editing}
-                canEditReport={canEditReport()}
                 onBack={() => navigate(-1)}
                 onEdit={() => setEditing(true)}
                 onSave={handleSave}
@@ -244,6 +238,87 @@ const ReportDetailsPage: React.FC = () => {
             )}
 
             <Stack spacing={3}>
+                {/* Screenshot Section */}
+                {screenshotUrl && (
+                    <Paper elevation={2} sx={{ p: 3 }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                            <Typography variant="h6">
+                                Screenshot
+                            </Typography>
+                            <Box>
+                                <Button
+                                    startIcon={<ZoomIn />}
+                                    onClick={() => setFullscreenScreenshot(!fullscreenScreenshot)}
+                                    size="small"
+                                    sx={{ mr: 1 }}
+                                >
+                                    {fullscreenScreenshot ? 'Normal View' : 'Zoom In'}
+                                </Button>
+                            </Box>
+                        </Box>
+
+                        <Box sx={{
+                            position: 'relative',
+                            overflow: 'hidden',
+                            borderRadius: 1,
+                            border: '1px solid',
+                            borderColor: 'divider',
+                            bgcolor: 'background.paper'
+                        }}>
+                            <Box
+                                sx={{
+                                    display: 'flex',
+                                    justifyContent: 'center',
+                                    alignItems: 'center',
+                                    bgcolor: '#f5f5f5',
+                                    minHeight: fullscreenScreenshot ? '70vh' : 400,
+                                    maxHeight: fullscreenScreenshot ? '70vh' : 400,
+                                    overflow: 'auto',
+                                    p: fullscreenScreenshot ? 2 : 0
+                                }}
+                            >
+                                <img
+                                    src={screenshotUrl}
+                                    alt="Report Screenshot"
+                                    style={{
+                                        maxWidth: fullscreenScreenshot ? '100%' : 'auto',
+                                        maxHeight: fullscreenScreenshot ? '100%' : 400,
+                                        objectFit: fullscreenScreenshot ? 'contain' : 'scale-down',
+                                        display: 'block'
+                                    }}
+                                    onError={(e) => {
+                                        console.error('Failed to load screenshot:', e);
+                                        const target = e.target as HTMLImageElement;
+                                        target.style.display = 'none';
+                                    }}
+                                />
+                            </Box>
+
+                            {!screenshotUrl && (
+                                <Box sx={{
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    height: 400,
+                                    color: 'text.secondary'
+                                }}>
+                                    <ImageNotSupported sx={{ fontSize: 60, mb: 2 }} />
+                                    <Typography variant="body1">
+                                        No screenshot available
+                                    </Typography>
+                                </Box>
+                            )}
+                        </Box>
+
+                        {report.currentUrl && (
+                            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                                URL: {report.currentUrl}
+                            </Typography>
+                        )}
+                    </Paper>
+                )}
+
                 {/* Report Details */}
                 <ReportDetailsCard
                     report={report}
@@ -272,6 +347,62 @@ const ReportDetailsPage: React.FC = () => {
                 {/* Events List */}
                 <EventsTable events={events} />
             </Stack>
+
+            {/* Fullscreen Modal for Screenshot */}
+            {fullscreenScreenshot && screenshotUrl && (
+                <Box
+                    sx={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        bgcolor: 'rgba(0, 0, 0, 0.9)',
+                        zIndex: 1300,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        p: 2
+                    }}
+                    onClick={() => setFullscreenScreenshot(false)}
+                >
+                    <Box
+                        sx={{
+                            maxWidth: '90vw',
+                            maxHeight: '90vh',
+                            position: 'relative'
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <img
+                            src={screenshotUrl}
+                            alt="Fullscreen Screenshot"
+                            style={{
+                                maxWidth: '100%',
+                                maxHeight: '90vh',
+                                objectFit: 'contain',
+                                borderRadius: 8
+                            }}
+                        />
+                        <Button
+                            variant="contained"
+                            onClick={() => setFullscreenScreenshot(false)}
+                            sx={{
+                                position: 'absolute',
+                                top: 16,
+                                right: 16,
+                                bgcolor: 'rgba(0, 0, 0, 0.7)',
+                                color: 'white',
+                                '&:hover': {
+                                    bgcolor: 'rgba(0, 0, 0, 0.9)',
+                                }
+                            }}
+                        >
+                            Close
+                        </Button>
+                    </Box>
+                </Box>
+            )}
         </Box>
     );
 };

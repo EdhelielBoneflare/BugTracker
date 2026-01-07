@@ -1,9 +1,18 @@
+declare global {
+    interface Window {
+        html2canvas?: Html2Canvas;
+    }
+}
+
+const HTML2CANVAS_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+
 export type Html2Canvas = (element: HTMLElement, options?: any) => Promise<HTMLCanvasElement>;
 
 export class ScreenshotCapturer {
     private html2canvas: Html2Canvas | null = null;
     private defaultOptions: any = {};
-    private cdnUrl: string = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+    private cdnUrl: string = HTML2CANVAS_CDN;
+    private loadingPromise: Promise<void> | null = null;
 
     constructor() {
         this.setDefaultOptions();
@@ -24,35 +33,66 @@ export class ScreenshotCapturer {
     }
 
     private checkAvailability() {
-        if (typeof (window as any) !== 'undefined' && (window as any).html2canvas) {
-            this.html2canvas = (window as any).html2canvas as Html2Canvas;
+        if (typeof window !== 'undefined' && window.html2canvas) {
+            this.html2canvas = window.html2canvas;
         }
     }
 
-    // Loads html2canvas dynamically if not present
     private async ensureHtml2Canvas(): Promise<void> {
         if (this.html2canvas) return;
-        // If global exists, use it
+
         this.checkAvailability();
         if (this.html2canvas) return;
 
-        // Otherwise, load from CDN
-        await new Promise<void>((resolve, reject) => {
+        // Prevent duplicate loads
+        if (this.loadingPromise) {
+            return this.loadingPromise;
+        }
+
+        this.loadingPromise = new Promise<void>((resolve, reject) => {
+            // Check if script already exists
+            const existing = document.querySelector(`script[src="${this.cdnUrl}"]`) as HTMLScriptElement | null;
+            if (existing) {
+                const checkAndResolve = () => {
+                    this.checkAvailability();
+                    if (this.html2canvas) {
+                        resolve();
+                    } else {
+                        reject(new Error('html2canvas not available after load'));
+                    }
+                };
+
+                if (window.html2canvas) {
+                    this.html2canvas = window.html2canvas;
+                    resolve();
+                    return;
+                }
+
+                existing.addEventListener('load', checkAndResolve, { once: true });
+                existing.addEventListener('error', () => reject(new Error('Failed to load html2canvas')), { once: true });
+                return;
+            }
+
             const script = document.createElement('script');
             script.src = this.cdnUrl;
             script.async = true;
             script.onload = () => {
                 this.checkAvailability();
-                if (this.html2canvas) resolve();
-                else reject(new Error('html2canvas did not expose expected API'));
+                if (this.html2canvas) {
+                    resolve();
+                } else {
+                    reject(new Error('html2canvas did not expose expected API'));
+                }
             };
-            script.onerror = (err) => reject(new Error('Failed to load html2canvas script'));
+            script.onerror = () => reject(new Error('Failed to load html2canvas script'));
             document.head.appendChild(script);
         });
+
+        return this.loadingPromise;
     }
 
     public isHtml2CanvasAvailable(): boolean {
-        return !!this.html2canvas || !!(window as any).html2canvas;
+        return !!this.html2canvas || !!(typeof window !== 'undefined' && window.html2canvas);
     }
 
     public setOptions(opts: Partial<any>) {
@@ -65,10 +105,10 @@ export class ScreenshotCapturer {
 
     private async capture(element: HTMLElement, options?: any): Promise<string> {
         await this.ensureHtml2Canvas();
-        if (!this.html2canvas && !(window as any).html2canvas) {
+        if (!this.html2canvas && !window.html2canvas) {
             throw new Error('html2canvas is not available');
         }
-        const impl = this.html2canvas || (window as any).html2canvas;
+        const impl = this.html2canvas || window.html2canvas!;
         const opts = { ...this.defaultOptions, ...options };
         const canvas = await impl(element, opts);
         return canvas.toDataURL('image/jpeg', 0.8);
@@ -76,30 +116,40 @@ export class ScreenshotCapturer {
 
     public async capturePreview(target?: HTMLElement): Promise<string> {
         const el = target || document.body;
-        // small preview
-        const opts = { ...this.defaultOptions, scale: 0.3, quality: 0.5, backgroundColor: null } as any;
+        const opts = { ...this.defaultOptions, scale: 0.3, quality: 0.5, backgroundColor: null };
         return this.capture(el, opts);
     }
 
     public async captureFinal(target?: HTMLElement): Promise<string> {
         const el = target || document.body;
-        const opts = { ...this.defaultOptions, scale: 0.8, quality: 0.8, backgroundColor: '#ffffff' } as any;
+        const opts = { ...this.defaultOptions, scale: 0.8, quality: 0.8, backgroundColor: '#ffffff' };
         try {
             return await this.capture(el, opts);
         } catch (e) {
-            // fallback to viewport capture
-            const fallbackOpts = { ...this.defaultOptions, width: window.innerWidth, height: window.innerHeight, x: window.pageXOffset, y: window.pageYOffset } as any;
+            const fallbackOpts = {
+                ...this.defaultOptions,
+                width: window.innerWidth,
+                height: window.innerHeight,
+                x: window.pageXOffset,
+                y: window.pageYOffset
+            };
             await this.ensureHtml2Canvas();
-            const impl = this.html2canvas || (window as any).html2canvas;
+            const impl = this.html2canvas || window.html2canvas!;
             const canvas = await impl(document.body, fallbackOpts);
             return canvas.toDataURL('image/jpeg', 0.8);
         }
     }
 
     public async captureViewport(): Promise<string> {
-        const opts = { ...this.defaultOptions, width: window.innerWidth, height: window.innerHeight, x: window.pageXOffset, y: window.pageYOffset } as any;
+        const opts = {
+            ...this.defaultOptions,
+            width: window.innerWidth,
+            height: window.innerHeight,
+            x: window.pageXOffset,
+            y: window.pageYOffset
+        };
         await this.ensureHtml2Canvas();
-        const impl = this.html2canvas || (window as any).html2canvas;
+        const impl = this.html2canvas || window.html2canvas!;
         const canvas = await impl(document.body, opts);
         return canvas.toDataURL('image/jpeg', 0.8);
     }
@@ -121,4 +171,3 @@ export class ScreenshotCapturer {
         });
     }
 }
-

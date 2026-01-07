@@ -6,10 +6,13 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.util.ContentCachingRequestWrapper;
 import org.springframework.web.util.WebUtils;
 import uni.bugtracker.backend.dto.report.ReportCardDTO;
@@ -20,6 +23,7 @@ import uni.bugtracker.backend.model.Tag;
 import uni.bugtracker.backend.security.ProjectSecurity;
 import uni.bugtracker.backend.service.ReportService;
 
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
@@ -37,10 +41,13 @@ public class ReportController {
 
     // only for widget
     @PostMapping("/widget")
-    public ResponseEntity<?> create(@Valid @RequestBody ReportCreationRequestWidget request) {
+    public ResponseEntity<?> create(
+            @Valid @RequestPart ReportCreationRequestWidget request,
+            @RequestPart(required=true) MultipartFile screen) throws IOException {
+        byte[] screenBytes = screen.getBytes();
         return new ResponseEntity<>(Map.of(
                 "message", "Report created",
-                "reportId", reportService.createReport(request)),
+                "reportId", reportService.createReport(request, screenBytes)),
                 HttpStatus.CREATED);
     }
 
@@ -86,6 +93,19 @@ public class ReportController {
         @PathVariable Long reportId
     ) {
         return new ResponseEntity<>(reportService.getReportCard(reportId), HttpStatus.OK);
+    }
+
+    @PreAuthorize("@projectSecurity.hasAccessToProject(@reportService.getProjectIdByReportId(#reportId), authentication)")
+    @GetMapping("/{reportId}/screenshot")
+    public ResponseEntity<byte[]> getScreenshot(@PathVariable Long reportId) {
+        byte[] screen = reportService.getScreen(reportId);
+        if (screen == null) {
+            return ResponseEntity.notFound().build();
+        }
+        // define image MIME type
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.IMAGE_PNG);
+        return ResponseEntity.ok().headers(headers).body(screen);
     }
 
 

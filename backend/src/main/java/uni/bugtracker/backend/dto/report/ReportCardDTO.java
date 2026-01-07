@@ -2,6 +2,7 @@ package uni.bugtracker.backend.dto.report;
 
 
 import lombok.Getter;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import uni.bugtracker.backend.model.Report;
 
 import java.time.Instant;
@@ -18,7 +19,7 @@ public class ReportCardDTO {
     private Instant reportedAt;
     private String comments;
     private String userEmail;
-    private String screen;
+    private String screenUrl;
     private String currentUrl;
     private Boolean userProvided;
     private List<Long> eventIDs;
@@ -38,7 +39,12 @@ public class ReportCardDTO {
         this.reportedAt = report.getReportedAt();
         this.comments = report.getComments();
         this.userEmail = report.getUserEmail();
-        this.screen = report.getScreen();
+        if (report.getScreen() != null) {
+            String baseUrl = ServletUriComponentsBuilder.fromCurrentContextPath().build().toUriString();
+            this.screenUrl = baseUrl + "/api/reports/" + report.getId() + "/screenshot";
+        } else {
+            this.screenUrl = null;
+        }
         this.currentUrl = report.getCurrentUrl();
         this.userProvided = report.isUserProvided();
         this.eventIDs = report.getRelatedEventIds() == null

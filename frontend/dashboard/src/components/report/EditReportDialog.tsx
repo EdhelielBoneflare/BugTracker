@@ -17,7 +17,7 @@ import { Report, ReportStatus, CriticalityLevel } from '../../types/types';
 
 export interface EditReportData {
     status: ReportStatus;
-    criticality: CriticalityLevel;
+    level: CriticalityLevel;
     comments: string;
     projectId?: string;
     developerName?: string;
@@ -89,8 +89,8 @@ const EditReportDialog: React.FC<EditReportDialogProps> = ({
                     <FormControl fullWidth size="small">
                         <InputLabel>Criticality</InputLabel>
                         <Select
-                            value={editData.criticality}
-                            onChange={(e) => onEditDataChange('criticality', e.target.value as CriticalityLevel)}
+                            value={editData.level}
+                            onChange={(e) => onEditDataChange('level', e.target.value as CriticalityLevel)}
                             label="Criticality"
                         >
                             <MenuItem value={CriticalityLevel.LOW}>Low</MenuItem>

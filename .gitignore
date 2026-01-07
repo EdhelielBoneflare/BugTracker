@@ -31,5 +31,9 @@ replay_pid*
 *.iws
 
 /frontend/dashboard/node_modules
+/frontend/widget/node_modules
+
+/frontend/dashboard/package-lock.json
+/frontend/widget/package-lock.json
 
 .env

@@ -15,7 +15,7 @@ interface ReportsFilterProps {
     filterStatus: string;
     filterCriticality: string;
     onStatusChange: (status: string) => void;
-    onCriticalityChange: (criticality: string) => void;
+    onCriticalityChange: (level: string) => void;
     onApplyFilters: () => void;
     onResetFilters: () => void;
 }
