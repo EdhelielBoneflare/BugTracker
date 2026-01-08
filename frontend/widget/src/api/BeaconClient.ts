@@ -68,7 +68,7 @@ export class BeaconClient {
             const formData = new FormData();
 
             // Add JSON metadata as a blob with application/json content type
-            formData.append('report', new Blob([JSON.stringify(reportData)], { type: 'application/json' }));
+            formData.append('request', new Blob([JSON.stringify(reportData)], { type: 'application/json' }));
 
             // Add screenshot file if provided (optional)
             if (screenshotBlob) {
