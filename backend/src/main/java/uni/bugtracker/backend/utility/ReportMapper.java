@@ -41,7 +41,7 @@ public class ReportMapper {
         report.setReportedAt(request.getReportedAt());
         report.setComments(trim(request.getComments(), MAX_COMMENTS));
         report.setUserEmail(request.getUserEmail());
-        if (screen != null) {
+        if (screen != null && screen.length > 0) {
             report.setScreen(screen);
         }
         report.setCurrentUrl(request.getCurrentUrl());

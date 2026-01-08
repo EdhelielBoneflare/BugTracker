@@ -43,8 +43,8 @@ public class ReportController {
     @PostMapping("/widget")
     public ResponseEntity<?> create(
             @Valid @RequestPart ReportCreationRequestWidget request,
-            @RequestPart(required=true) MultipartFile screen) throws IOException {
-        byte[] screenBytes = screen.getBytes();
+            @RequestPart(required=false) MultipartFile screen) throws IOException {
+        byte[] screenBytes = (screen != null && !screen.isEmpty()) ? screen.getBytes() : null;
         return new ResponseEntity<>(Map.of(
                 "message", "Report created",
                 "reportId", reportService.createReport(request, screenBytes)),
