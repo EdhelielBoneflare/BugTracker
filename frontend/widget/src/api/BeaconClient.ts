@@ -72,7 +72,7 @@ export class BeaconClient {
 
             // Add screenshot file if provided (optional)
             if (screenshotBlob) {
-                formData.append('screenshot', screenshotBlob, 'screenshot.jpg');
+                formData.append('screen', screenshotBlob, 'screenshot.jpg');
             }
 
             // Use fetch instead of sendBeacon for multipart/form-data
