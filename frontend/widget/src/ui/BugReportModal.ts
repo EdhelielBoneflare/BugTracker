@@ -181,7 +181,21 @@ export class BugReportModal {
         if (!previewElement) return;
 
         try {
+            // Hide modal temporarily
+            if (this.modal) {
+                this.modal.style.display = 'none';
+            }
+
+            // Small delay to ensure modal is hidden from rendering
+            await new Promise(resolve => setTimeout(resolve, 100));
+
+            // Capture the page without the modal
             this.screenshotData = await this.screenshotCapturer.capturePreview(document.body);
+
+            // Show modal again
+            if (this.modal) {
+                this.modal.style.display = 'flex';
+            }
             this.updatePreviewElement(previewElement, this.screenshotData);
         } catch (error) {
             console.error('Failed to capture screenshot:', error);
