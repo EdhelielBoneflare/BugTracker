@@ -36,8 +36,8 @@
 <img width="1401" height="721" alt="bugtracker-Container drawio" src="https://github.com/user-attachments/assets/f2299192-9ee0-433d-a87a-6e4f57e91dd8" />
 
 #### Контракты API
-Полную документацию API можно найти по ссылке: [API Documentation](http://localhost:8080/swagger-ui/)
-Основные эндпоинты:
+Полную документацию API можно найти по ссылке (при запущенном проекте): [API Documentation](http://localhost:8080/swagger-ui/)
+Основные эндпоинты:\
 Аутентификация и регистрация:
 - POST `/api/auth/login` - body { username, password } → 200 { token }
 - POST `/api/auth/register` — body { username, password } → new token.
@@ -48,7 +48,7 @@
   Отчеты о багах:
 - POST `/api/reports/widget` — создать отчет о баге. — body { projectId, sessionId, title, tags: [], reportedAt, comments, userEmail, screen, currentUrl, userProvided} → 200
 - GET `/api/reports/{reportId}` — получить отчет о баге. → 200 { id, projectId, sessionId, title, tags: [], reportedAt, comments, userEmail, screen, currentUrl, userProvided, eventIds: [], level, status, developerName}
-  Сессии:
+Сессии:
 - POST `/api/sessions` — создать сессию. — body { projectId, startTime, browser, os, deviceType, screenResolution, viewportSize, language, userAgent, ipAddress, cookiesHash, plugins: [] } → 201 { message, sessionId }
 - GET `/api/sessions/{sessionId}` — получить сессию. → 200 { sessionId, projectId, isActive, startTime, endTime, browser, browserVersion, os, deviceType, screenResolution, viewportSize, language, userAgent, ipAddress, plugins: []}
   Действия пользователя:
@@ -72,33 +72,20 @@ Unit тесты в src/test/java (JUnit 5, Mockito).
 
 Чтобы встроить систему в свой сайт на все страницы добавьте следующий код в раздел <head> вашего HTML документа:
 ```html
-<script src="https://example.com/bugtracker.js"></script>
+<script src="https://EdhelielBoneflare.github.io/BugTracker/dist/bugtracker.bundle.js"></script>
 <script>
-    (async function() {
-        // Server base URL (where /api/* endpoints live)
-        const apiUrl = 'http://localhost:8080';
-        // projectId received from service on project registration
-        const projectId = 1;
-
-        const bt = new window.BugTracker.BugTracker({
-            apiUrl: apiUrl,
-            projectId: projectId,
-            // flushInterval: 0   // default is 0 (disabled); only ACTION/ERROR trigger immediate flush
-            // otherwise sec*1000 flush interval
-        });
-
-        try {
-            await bt.initialize();            // initialize() is async and will:
-                                              // - create a local session and attempt server session creation in background,
-                                              // - start trackers (errors, network, user actions),
-                                              // - create the Report button UI.
-        } catch (err) {
-            console.error('BugTracker failed to initialize:', err);
-        }
-    })();
+  BugTracker.initialize('given-project-id', {
+    baseUrl: 'http://localhost:8080', // текущий URL сервиса
+  });
 </script>
 ```
 ## Тестовая страница (one-pager)
 В репозитории добавлена одностраничная тестовая страница для ручного тестирования API: `docs/index.html`.\
 Страница доступна по адресу `https://edhelielboneflare.github.io/BugTracker/`.
 
+### Использование тестовой страницы
+1. Соберите и запустите сервис BugTracker локально (используйте команду ```bash ./scripts/ci.sh```)
+2. Откройте в браузере файл `docs/index.html` или перейдите по ссылке `https://edhelielboneflare.github.io/BugTracker/`
+3. Введите URL вашего локального сервиса BugTracker (`http://localhost:3000`)
+4. Зарегистрируйтесь в системе, используя форму регистрации
+5. Для тестирования системы используйте проект test-project (см. пункт 2).

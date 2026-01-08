@@ -59,5 +59,5 @@ app:
 # Логирование для отладки CORS
 logging:
   level:
-    org.springframework.web.cors: DEBUG
-    uni.bugtracker.backend: DEBUG
+    org.springframework.web.cors: WARN
+    uni.bugtracker.backend: WARN

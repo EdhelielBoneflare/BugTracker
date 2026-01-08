@@ -38,10 +38,15 @@ public class AuthController {
             return ResponseEntity.badRequest().body(Map.of("message", "Username already exists"));
         }
 
+        Role userRole = Role.DEVELOPER;
+        if (developerRepository.countAll() == 0) {
+            userRole = Role.ADMIN;
+        }
+
         Developer user = Developer.builder()
                 .username(request.getUsername())
                 .password(passwordEncoder.encode(request.getPassword()))
-                .role(Role.DEVELOPER)
+                .role(userRole)
                 .build();
 
         developerRepository.save(user);

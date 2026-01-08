@@ -15,6 +15,9 @@ import java.util.Optional;
 public interface DeveloperRepository extends JpaRepository<Developer, String> {
     Optional<Developer> findByUsername(String username);
 
+    @Query("select count(d) from Developer d")
+    int countAll();
+
     boolean existsByUsername(String username);
 
     boolean existsByIdAndProjects_Id(String devId, String projectId);
