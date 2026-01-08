@@ -400,6 +400,7 @@ export class BugTracker {
 
         const modal = new BugReportModal(
             this.beaconClient,
+            this.client,
             projectId,
             sessionId,
             async () => {

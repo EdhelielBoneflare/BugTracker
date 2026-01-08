@@ -1,6 +1,7 @@
 // TypeScript
 import { ScreenshotCapturer } from './ScreenshotCapturer';
 import { BeaconClient } from '../api/BeaconClient';
+import {Client} from "../api/Client";
 
 export class BugReportModal {
     private modal: HTMLElement | null = null;
@@ -13,14 +14,17 @@ export class BugReportModal {
     private projectId: string;
     private sessionId: number;
     private onClose: () => void;
+    private client: Client;
 
     constructor(
         beaconClient: BeaconClient,
+        client: Client,
         projectId: string,
         sessionId: number,
         onClose: () => void
     ) {
         this.beaconClient = beaconClient;
+        this.client = client;
         this.projectId = projectId;
         this.sessionId = sessionId;
         this.onClose = onClose;
@@ -160,6 +164,12 @@ export class BugReportModal {
             }
 
             this.showSuccess('Report submitted successfully!');
+
+            const newSessionId = await this.client.restartSession();
+            if (newSessionId) {
+                this.sessionId = newSessionId;
+            }
+
             setTimeout(() => {
                 this.close();
             }, 1500);

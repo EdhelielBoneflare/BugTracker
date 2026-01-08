@@ -89,26 +89,6 @@ export class BeaconClient {
         }
     }
 
-    public sendHeartbeat(sessionId: string, projectId: string): boolean {
-        if (!navigator.sendBeacon) {
-            return false;
-        }
-
-        const payload = {
-            sessionId,
-            projectId,
-            timestamp: new Date().toISOString(),
-            url: window.location.href
-        };
-
-        const url = `${this.baseUrl}/api/sessions/heartbeat`;
-        const blob = new Blob([JSON.stringify(payload)], {
-            type: 'application/json'
-        });
-
-        return navigator.sendBeacon(url, blob);
-    }
-
     /**
      * Process bug report payload to reduce size if needed
      */
