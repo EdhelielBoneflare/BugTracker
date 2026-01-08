@@ -36,7 +36,7 @@ export class BeaconClient {
         // Check if screenshot is too large
         const processedPayload = await this.processBugReportPayload(payload);
 
-        const url = `${this.baseUrl}/api/reports`;
+        const url = `${this.baseUrl}/api/reports/widget`;
         const blob = new Blob([JSON.stringify(processedPayload)], {
             type: 'application/json'
         });
@@ -62,7 +62,7 @@ export class BeaconClient {
         },
         screenshotBlob: Blob | null
     ): Promise<boolean> {
-        const url = `${this.baseUrl}/api/reports`;
+        const url = `${this.baseUrl}/api/reports/widget`;
 
         try {
             const formData = new FormData();

@@ -237,6 +237,13 @@ export class BugTracker {
         const additionalMetadata: Record<string, any> = {};
 
         try {
+            if (element.id) {
+                additionalMetadata.elementId = element.id;
+            }
+            if (element.className) {
+                additionalMetadata.elementClass = element.className;
+            }
+
             if (element instanceof HTMLAnchorElement) {
                 additionalMetadata.href = element.href;
                 // Also include target attribute if present
@@ -251,8 +258,17 @@ export class BugTracker {
             if (element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement || element instanceof HTMLSelectElement) {
                 additionalMetadata.inputName = (element as HTMLInputElement).name || undefined;
                 additionalMetadata.inputType = (element as HTMLInputElement).type || undefined;
-                // Don't send full values for privacy; truncate to 100 chars
-                additionalMetadata.value = ((element as HTMLInputElement).value ?? '').toString().substring(0, 100);
+                // Don't send full values for privacy; truncate to 15 chars
+                additionalMetadata.value = ((element as HTMLInputElement).value ?? '').toString().substring(0, 15);
+
+                // Capture placeholder if present
+                if ('placeholder' in element && element.placeholder) {
+                    additionalMetadata.placeholder = element.placeholder;
+                }
+            }
+
+            if (element instanceof HTMLButtonElement) {
+                additionalMetadata.buttonType = element.type;
             }
 
             // Include dataset attributes (shallow copy)
@@ -272,8 +288,8 @@ export class BugTracker {
             tagName: element.tagName,
             xPath: this.getElementXPath(element),
             customMetadata: {
-                elementId: element.id || undefined,
-                elementClass: element.className || undefined,
+                //elementId: element.id || undefined,
+                //elementClass: element.className || undefined,
                 textContent: element.textContent?.substring(0, 100),
                 eventType: action.event.type,
                 ...additionalMetadata

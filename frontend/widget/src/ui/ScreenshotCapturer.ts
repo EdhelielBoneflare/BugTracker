@@ -114,11 +114,12 @@ export class ScreenshotCapturer {
         return canvas.toDataURL('image/jpeg', 0.8);
     }
 
-    public async capturePreview(target?: HTMLElement): Promise<string> {
-        const el = target || document.body;
-        const opts = { ...this.defaultOptions, scale: 0.3, quality: 0.5, backgroundColor: null };
-        return this.capture(el, opts);
+    public async capturePreview(targetElement?: HTMLElement): Promise<string> {
+        const target = targetElement || document.body;
+        const opts = { ...this.defaultOptions, scale: 0.5, quality: 0.6 };
+        return await this.capture(target, opts);
     }
+
 
     public async captureFinal(target?: HTMLElement): Promise<string> {
         const el = target || document.body;
