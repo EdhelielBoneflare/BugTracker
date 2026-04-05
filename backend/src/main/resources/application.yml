@@ -61,3 +61,8 @@ logging:
   level:
     org.springframework.web.cors: WARN
     uni.bugtracker.backend: WARN
+
+telegram:
+  bot:
+    username: ${TG_BOT_TOKEN}
+    token: ${TG_BOT_USERNAME}
