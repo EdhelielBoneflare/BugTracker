@@ -36,6 +36,9 @@ dependencies {
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.19.0'
     testImplementation 'io.projectreactor:reactor-test'
 
+    implementation 'org.telegram:telegrambots-longpolling:9.5.0'
+    implementation 'org.telegram:telegrambots-client:9.5.0'
+
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
 

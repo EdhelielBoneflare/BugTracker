@@ -19,6 +19,7 @@ public class CriticalityAnalysisService {
     private final ReportRepository reportRepository;
     private final EventRepository eventRepository;
     private final AIClient aiClient;
+    private final NotificationService notificationService;
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void analyzeAndUpdate(Long reportId) {
@@ -33,6 +34,10 @@ public class CriticalityAnalysisService {
 
         report.setCriticality(level);
         reportRepository.save(report);
+
+        if (level == CriticalityLevel.CRITICAL) {
+            notificationService.sendNotifs(report.getProject().getId(), report);
+        }
     }
 
     private CriticalityLevel determineCriticality(List<Event> events) {
