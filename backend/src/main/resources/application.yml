@@ -57,7 +57,7 @@ app:
     allowed-origins: "http://localhost:3000,http://127.0.0.1:,http://127.0.0.1:,https://edhelielboneflare.github.io,null"
   default-admin:
     username: ${ADMIN_USERNAME}
-    password: ${ADIN_PASSWORD}
+    password: ${ADMIN_PASSWORD}
 
 # Логирование для отладки CORS
 logging:

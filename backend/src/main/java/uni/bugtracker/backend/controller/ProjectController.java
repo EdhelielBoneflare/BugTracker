@@ -28,7 +28,7 @@ public class ProjectController {
 
     @PatchMapping("/users/{userId}/projects/assign/{projectId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'PM')")
-    public ResponseEntity<UserDTO> assignProject(
+    public ResponseEntity<UserDTO> assignProjectToUser(
             @PathVariable @NotNull @NotBlank String userId,
             @PathVariable @NotNull @NotBlank String projectId,
             Authentication auth
@@ -38,7 +38,7 @@ public class ProjectController {
 
     @PatchMapping("/users/{userId}/projects/remove/{projectId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'PM')")
-    public ResponseEntity<UserDTO> removeProject(
+    public ResponseEntity<UserDTO> removeProjectFromUser(
             @PathVariable @NotNull @NotBlank String userId,
             @PathVariable @NotNull @NotBlank String projectId,
             Authentication auth
@@ -62,11 +62,12 @@ public class ProjectController {
     }
 
     @PostMapping("/projects")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ProjectCreationUpdatingResponse> addProject(
-            @RequestBody @Valid ProjectRequestBody request
+            @RequestBody @Valid ProjectRequestBody request,
+            Authentication authentication
     ) {
-        Project project = projectService.createProject(request);
+        Project project = projectService.createProject(request, authentication);
         ProjectCreationUpdatingResponse response = new ProjectCreationUpdatingResponse(
                 "Project created", project.getId()
         );

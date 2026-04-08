@@ -1,5 +1,6 @@
 package uni.bugtracker.backend.service;
 
+import java.util.Collections;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -8,6 +9,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.core.Authentication;
 import uni.bugtracker.backend.dto.project.ProjectRequestBody;
+import uni.bugtracker.backend.exception.ProjectCreationError;
 import uni.bugtracker.backend.exception.ResourceNotFoundException;
 import uni.bugtracker.backend.model.Developer;
 import uni.bugtracker.backend.model.Project;
@@ -72,25 +74,122 @@ class ProjectServiceTest {
     }
 
     @Test
-    void createProject_shouldSaveAndReturnProject() {
+    void createProject_shouldPromoteDeveloperToPm_whenNoProjects() {
         // Given
         ProjectRequestBody request = new ProjectRequestBody();
         request.setProjectName("New Project");
 
+        Authentication authentication = mock(Authentication.class);
+        when(authentication.getName()).thenReturn("devUser");
+
+        Developer developer = new Developer();
+        developer.setId("dev-id");
+        developer.setUsername("devUser");
+        developer.setRole(Role.DEVELOPER);
+        developer.setProjects(new HashSet<>());
+
+        when(developerRepository.findByUsername("devUser"))
+            .thenReturn(Optional.of(developer));
+
+        // dev without projects
+        when(developerRepository.findProjectsByDeveloperId("dev-id"))
+            .thenReturn(Collections.emptyList());
+
         when(projectRepository.save(any(Project.class))).thenAnswer(invocation -> {
             Project p = invocation.getArgument(0);
             p.setId("new-id");
-            p.setName("New Project");
             return p;
         });
 
+        when(developerRepository.save(any(Developer.class)))
+            .thenAnswer(invocation -> invocation.getArgument(0));
+
         // When
-        Project result = projectService.createProject(request);
+        Project result = projectService.createProject(request, authentication);
 
         // Then
         assertThat(result.getId()).isEqualTo("new-id");
         assertThat(result.getName()).isEqualTo("New Project");
+
+        assertThat(developer.getRole()).isEqualTo(Role.PM);
+        assertThat(developer.getProjects()).contains(result);
+
         verify(projectRepository).save(any(Project.class));
+        verify(developerRepository).save(developer);
+    }
+
+    @Test
+    void createProject_shouldThrowException_whenDeveloperHasProjects() {
+        // Given
+        ProjectRequestBody request = new ProjectRequestBody();
+        request.setProjectName("New Project");
+
+        Authentication authentication = mock(Authentication.class);
+        when(authentication.getName()).thenReturn("devUser");
+
+        Developer developer = new Developer();
+        developer.setId("dev-id");
+        developer.setUsername("devUser");
+        developer.setRole(Role.DEVELOPER);
+        developer.setProjects(new HashSet<>());
+
+        when(developerRepository.findByUsername("devUser"))
+            .thenReturn(Optional.of(developer));
+
+        // dev has projects
+        when(developerRepository.findProjectsByDeveloperId("dev-id"))
+            .thenReturn(List.of(new Project()));
+
+        when(projectRepository.save(any(Project.class))).thenAnswer(invocation -> {
+            Project p = invocation.getArgument(0);
+            p.setId("new-id");
+            return p;
+        });
+
+        // When + Then
+        assertThatThrownBy(() ->
+            projectService.createProject(request, authentication)
+        )
+            .isInstanceOf(ProjectCreationError.class)
+            .hasMessageContaining("You have active projects");
+
+        // user wasn't saved
+        verify(developerRepository, never()).save(any());
+    }
+
+    @Test
+    void createProject_shouldNotModifyAdmin() {
+        // Given
+        ProjectRequestBody request = new ProjectRequestBody();
+        request.setProjectName("Admin Project");
+
+        Authentication authentication = mock(Authentication.class);
+        when(authentication.getName()).thenReturn("admin");
+
+        Developer admin = new Developer();
+        admin.setId("admin-id");
+        admin.setUsername("admin");
+        admin.setRole(Role.ADMIN);
+        admin.setProjects(new HashSet<>());
+
+        when(developerRepository.findByUsername("admin"))
+            .thenReturn(Optional.of(admin));
+
+        when(projectRepository.save(any(Project.class))).thenAnswer(invocation -> {
+            Project p = invocation.getArgument(0);
+            p.setId("new-id");
+            return p;
+        });
+
+        // When
+        Project result = projectService.createProject(request, authentication);
+
+        // Then
+        assertThat(result.getId()).isEqualTo("new-id");
+        assertThat(admin.getRole()).isEqualTo(Role.ADMIN);
+        assertThat(admin.getProjects()).isEmpty();
+
+        verify(developerRepository, never()).save(admin);
     }
 
     @Test

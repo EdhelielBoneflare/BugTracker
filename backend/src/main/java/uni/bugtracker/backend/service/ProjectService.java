@@ -3,8 +3,11 @@ package uni.bugtracker.backend.service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import uni.bugtracker.backend.dto.project.ProjectRequestBody;
+import uni.bugtracker.backend.exception.ProjectCreationError;
 import uni.bugtracker.backend.exception.ResourceNotFoundException;
+import uni.bugtracker.backend.model.Developer;
 import uni.bugtracker.backend.model.Project;
 import uni.bugtracker.backend.repository.DeveloperRepository;
 import uni.bugtracker.backend.repository.ProjectRepository;
@@ -19,10 +22,28 @@ public class ProjectService {
     private final ProjectRepository projectRepository;
     private final DeveloperRepository developerRepository;
 
-    public Project createProject(ProjectRequestBody projectBody) {
+    @Transactional
+    public Project createProject(ProjectRequestBody projectBody, Authentication authentication) {
         Project project = new Project();
         project.setName(projectBody.getProjectName());
-        return projectRepository.save(project);
+        Project savedProject = projectRepository.save(project);
+
+        String username = authentication.getName();
+
+        Developer currentUser = developerRepository.findByUsername(username)
+            .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (currentUser.getRole() != Role.ADMIN) {
+            if (currentUser.getRole().equals(Role.DEVELOPER)
+                && !developerRepository.findProjectsByDeveloperId(currentUser.getId()).isEmpty()) {
+                throw new ProjectCreationError("You have active projects in dev role. " +
+                    "Create a new account to manage projects as pm.");
+            }
+            currentUser.setRole(Role.PM);
+            currentUser.getProjects().add(savedProject);
+            developerRepository.save(currentUser);
+        }
+        return savedProject;
     }
 
     public List<Project> getAllProjects() {
