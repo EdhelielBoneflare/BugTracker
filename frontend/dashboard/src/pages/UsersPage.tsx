@@ -1,288 +1,328 @@
-import React, {useEffect, useState} from 'react';
-import {Alert, Box, CircularProgress, Typography,} from '@mui/material';
-import {AdminPanelSettings, Engineering, ManageAccounts,} from '@mui/icons-material';
-import {useAuth} from '../contexts/AuthContext';
-import {api} from '../api/Api';
-import {Project, User, UserRole} from '../types/types';
-import UserTable from '../components/user/UserTable';
-import RoleChangeDialog from '../components/user/RoleChangeDialog';
-import AssignProjectDialog from '../components/user/AssignProjectDialog';
+import React, { useEffect, useState } from 'react';
+       import { Alert, Box, CircularProgress, Typography } from '@mui/material';
+       import { AdminPanelSettings, Engineering, ManageAccounts } from '@mui/icons-material';
+       import { useAuth } from '../contexts/AuthContext';
+       import { api } from '../api/Api';
+       import { NotificationState, Project, User, UserRole } from '../types/types';
+       import UserTable from '../components/user/UserTable';
+       import RoleChangeDialog from '../components/user/RoleChangeDialog';
+       import AssignProjectDialog from '../components/user/AssignProjectDialog';
 
-const UsersPage: React.FC = () => {
-    const { user: currentUser, isAdmin, isPM, isDeveloper } = useAuth();
-    const [users, setUsers] = useState<User[]>([]);
-    const [projects, setProjects] = useState<Project[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-    const [openRoleDialog, setOpenRoleDialog] = useState(false);
-    const [openAssignDialog, setOpenAssignDialog] = useState(false);
-    const [selectedUser, setSelectedUser] = useState<User | null>(null);
-    const [selectedProjectId, setSelectedProjectId] = useState<string>('');
-    const [selectedRole, setSelectedRole] = useState<UserRole>(UserRole.DEVELOPER);
-    const [userProjects, setUserProjects] = useState<Map<string, Project[]>>(new Map());
+       const UsersPage: React.FC = () => {
+           const { user: currentUser, isAdmin, isPM, isDeveloper } = useAuth();
 
-    useEffect(() => {
-        fetchData();
-    }, []);
+           const [users, setUsers] = useState<User[]>([]);
+           const [projects, setProjects] = useState<Project[]>([]);
+           const [loading, setLoading] = useState(true);
+           const [error, setError] = useState<string | null>(null);
 
-    const fetchData = async () => {
-        try {
-            setLoading(true);
+           const [openRoleDialog, setOpenRoleDialog] = useState(false);
+           const [openAssignDialog, setOpenAssignDialog] = useState(false);
+           const [selectedUser, setSelectedUser] = useState<User | null>(null);
+           const [selectedProjectId, setSelectedProjectId] = useState<string>('');
+           const [selectedRole, setSelectedRole] = useState<UserRole>(UserRole.DEVELOPER);
 
-            const usersResponse = await api.getAllUsers(0, 100);
-            const usersList = usersResponse.content;
-            setUsers(usersList);
+           const [userProjects, setUserProjects] = useState<Map<string, Project[]>>(new Map());
+           const [notificationStates, setNotificationStates] = useState<Map<string, NotificationState>>(new Map());
+           const [setupLoadingUserId, setSetupLoadingUserId] = useState<string | null>(null);
 
-            let projectsData: Project[] = [];
+           const makeNotifKey = (userId: string, projectId: string) => `${userId}:${projectId}`;
 
-            if (isAdmin()) {
-                projectsData = await api.getAllProjects();
-            } else if (isPM()) {
-                projectsData = await api.getMyProjects();
-            } else if (isDeveloper()) {
-                try {
-                    projectsData = await api.getMyProjects();
-                } catch (error) {
-                    console.log('Developer has no projects assigned, using empty array');
-                    projectsData = [];
-                }
-            }
+           useEffect(() => {
+               fetchData();
+           }, []);
 
-            setProjects(projectsData);
+           const loadNotificationStates = async (projectsData: Project[]) => {
+               const stateMap = new Map<string, NotificationState>();
 
-            const projectsMap = new Map<string, Project[]>();
+               await Promise.all(
+                   projectsData.map(async (project) => {
+                       try {
+                           const items = await api.getNotificationStates(project.id);
 
-            for (const user of usersList) {
-                const userProjectIds = user.projectIds || [];
+                           items.forEach((item) => {
+                               // Keep compatibility if backend still returns devId instead of userId
+                               const userId = item.userId ?? item.devId;
+                               if (!userId) return;
 
-                const userProjectObjects = projectsData.length > 0
-                    ? projectsData.filter(project =>
-                        userProjectIds.includes(project.id)
-                    )
-                    : [];
+                               stateMap.set(makeNotifKey(userId, project.id), item.state);
+                           });
+                       } catch (err) {
+                           console.warn(`Failed to load notification states for project ${project.id}:`, err);
+                       }
+                   })
+               );
 
-                projectsMap.set(user.id, userProjectObjects);
-            }
+               setNotificationStates(stateMap);
+           };
 
-            setUserProjects(projectsMap);
-            setError(null);
-        } catch (err: any) {
-            setError(err.message || 'Failed to load data');
-        } finally {
-            setLoading(false);
-        }
-    };
+           const fetchData = async () => {
+               try {
+                   setLoading(true);
 
-    const handleAssignProject = async () => {
-        if (!selectedUser || !selectedProjectId) return;
+                   const usersResponse = await api.getAllUsers(0, 100);
+                   const usersList = usersResponse.content;
+                   setUsers(usersList);
 
-        try {
-            console.log('Assigning user to project:', {
-                userId: selectedUser.id,
-                projectId: selectedProjectId,
-                isAdmin: isAdmin(),
-                isPM: isPM()
-            });
+                   let projectsData: Project[] = [];
 
-            await api.assignUserToProject(selectedUser.id, selectedProjectId);
+                   if (isAdmin()) {
+                       projectsData = await api.getAllProjects();
+                   } else if (isPM()) {
+                       projectsData = await api.getMyProjects();
+                   } else if (isDeveloper()) {
+                       try {
+                           projectsData = await api.getMyProjects();
+                       } catch {
+                           console.log('Developer has no projects assigned, using empty array');
+                           projectsData = [];
+                       }
+                   }
 
-            await fetchData();
+                   setProjects(projectsData);
 
-            setOpenAssignDialog(false);
-            setSelectedUser(null);
-            setSelectedProjectId('');
-            setError(null);
+                   const projectsMap = new Map<string, Project[]>();
+                   for (const user of usersList) {
+                       const userProjectIds = user.projectIds || [];
+                       const userProjectObjects =
+                           projectsData.length > 0
+                               ? projectsData.filter((project) => userProjectIds.includes(project.id))
+                               : [];
 
-        } catch (err: any) {
-            console.error('Assign project error:', err);
-            setError(err.message || 'Failed to assign project');
-        }
-    };
+                       projectsMap.set(user.id, userProjectObjects);
+                   }
 
-    const handleRemoveProject = async (userId: string, projectId: string) => {
-        const user = users.find(u => u.id === userId);
-        if (!user) return;
+                   setUserProjects(projectsMap);
+                   await loadNotificationStates(projectsData);
+                   setError(null);
+               } catch (err: any) {
+                   setError(err.message || 'Failed to load data');
+               } finally {
+                   setLoading(false);
+               }
+           };
 
-        const projectName = projects.find(p => p.id === projectId)?.name || projectId;
-        const userName = user.username;
+           const handleAssignProject = async () => {
+               if (!selectedUser || !selectedProjectId) return;
 
-        if (!window.confirm(`Are you sure you want to remove ${userName} from project "${projectName}"?`)) return;
+               try {
+                   await api.assignUserToProject(selectedUser.id, selectedProjectId);
+                   await fetchData();
 
-        try {
-            console.log('Removing user from project:', {
-                userId,
-                projectId,
-                userRole: user.role,
-                isAdmin: isAdmin(),
-                isPM: isPM()
-            });
+                   setOpenAssignDialog(false);
+                   setSelectedUser(null);
+                   setSelectedProjectId('');
+                   setError(null);
+               } catch (err: any) {
+                   setError(err.message || 'Failed to assign project');
+               }
+           };
 
-            await api.removeUserFromProject(userId, projectId);
+           const handleRemoveProject = async (userId: string, projectId: string) => {
+               const user = users.find((u) => u.id === userId);
+               if (!user) return;
 
-            await fetchData();
+               const projectName = projects.find((p) => p.id === projectId)?.name || projectId;
+               if (!window.confirm(`Are you sure you want to remove ${user.username} from project "${projectName}"?`)) return;
 
-            setError(null);
+               try {
+                   await api.removeUserFromProject(userId, projectId);
+                   await fetchData();
+                   setError(null);
+               } catch (err: any) {
+                   setError(err.message || 'Failed to remove from project');
+               }
+           };
 
-        } catch (err: any) {
-            console.error('Remove project error:', err);
-            setError(err.message || 'Failed to remove from project');
-        }
-    };
+           const canChangeRole = (user: User) => {
+               if (!isAdmin()) return false;
+               if (user.id === currentUser?.id) return false;
+               return true;
+           };
 
-    const canChangeRole = (user: User) => {
-        if (!isAdmin()) return false;
-        if (user.id === currentUser?.id) return false;
-        return true;
-    };
+           const canAssignProject = (user: User) => {
+               if (isDeveloper()) return false;
+               if (isAdmin()) return true;
+               if (isPM() && user.role === UserRole.DEVELOPER) return true;
+               return false;
+           };
 
-    const canAssignProject = (user: User) => {
-        if (isDeveloper()) return false;
+           const canRemoveFromProject = (userId: string, projectId: string) => {
+               const user = users.find((u) => u.id === userId);
+               if (!user) return false;
 
-        if (isAdmin()) return true;
+               if (isDeveloper()) return false;
+               if (isAdmin()) return true;
 
-        if (isPM() && user.role === UserRole.DEVELOPER) return true;
+               if (isPM() && user.role === UserRole.DEVELOPER) {
+                   return projects.some((p) => p.id === projectId);
+               }
 
-        return false;
-    };
+               return false;
+           };
 
-    const canRemoveFromProject = (userId: string, projectId: string) => {
-        const user = users.find(u => u.id === userId);
-        if (!user) return false;
+           const getNotificationState = (userId: string, projectId: string): NotificationState | null => {
+               return notificationStates.get(makeNotifKey(userId, projectId)) ?? null;
+           };
 
-        if (isDeveloper()) return false;
+           const canSetupNotification = (user: User) => {
+               if (isDeveloper()) return false;
+               if (isAdmin()) return true;
+               return isPM() && user.role === UserRole.DEVELOPER;
+           };
 
-        if (isAdmin()) return true;
+           const handleSetupNotification = async (userId: string, projectId: string) => {
+               const loadingKey = makeNotifKey(userId, projectId);
 
-        if (isPM() && user.role === UserRole.DEVELOPER) {
-            return projects.some(p => p.id === projectId);
-        }
+               try {
+                   setSetupLoadingUserId(loadingKey);
 
-        return false;
-    };
+                   const response = await api.setupUserNotifications(userId, projectId);
 
-    const handleRoleChange = async () => {
-        if (!selectedUser || !selectedRole) return;
+                   if (!response?.setupUrl) {
+                       throw new Error('Setup URL was not returned by backend');
+                   }
 
-        try {
-            await api.updateUserRole(selectedUser.id, selectedRole);
-            fetchData(); // Перезагружаем данные
-            setOpenRoleDialog(false);
-            setSelectedUser(null);
-            setSelectedRole(UserRole.DEVELOPER);
-        } catch (err: any) {
-            setError(err.message || 'Failed to update role');
-        }
-    };
+                   // Requirement: redirect to returned link
+                   window.location.href = response.setupUrl;
+               } catch (err: any) {
+                   setError(err.message || 'Failed to setup notifications');
+               } finally {
+                   setSetupLoadingUserId(null);
+               }
+           };
 
-    const getRoleIcon = (role: UserRole) => {
-        switch (role) {
-            case UserRole.ADMIN: return <AdminPanelSettings />;
-            case UserRole.PM: return <ManageAccounts />;
-            case UserRole.DEVELOPER: return <Engineering />;
-            default: return <Engineering />;
-        }
-    };
+           const handleRoleChange = async () => {
+               if (!selectedUser || !selectedRole) return;
 
-    const getRoleColor = (role: UserRole) => {
-        switch (role) {
-            case UserRole.ADMIN: return 'error';
-            case UserRole.PM: return 'warning';
-            case UserRole.DEVELOPER: return 'primary';
-            default: return 'default';
-        }
-    };
+               try {
+                   await api.updateUserRole(selectedUser.id, selectedRole);
+                   await fetchData();
 
-    const getUserAvatar = (username: string) => {
-        return username.charAt(0).toUpperCase();
-    };
+                   setOpenRoleDialog(false);
+                   setSelectedUser(null);
+                   setSelectedRole(UserRole.DEVELOPER);
+               } catch (err: any) {
+                   setError(err.message || 'Failed to update role');
+               }
+           };
 
-    if (loading) {
-        return (
-            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
-                <CircularProgress />
-            </Box>
-        );
-    }
+           const getRoleIcon = (role: UserRole) => {
+               switch (role) {
+                   case UserRole.ADMIN:
+                       return <AdminPanelSettings />;
+                   case UserRole.PM:
+                       return <ManageAccounts />;
+                   case UserRole.DEVELOPER:
+                       return <Engineering />;
+                   default:
+                       return <Engineering />;
+               }
+           };
 
-    return (
-        <Box>
-            <Box sx={{ mb: 3 }}>
-                <Typography variant="h4" gutterBottom>
-                    User Management
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                    {isAdmin()
-                        ? 'Manage user roles and project assignments'
-                        : isPM()
-                            ? 'Manage project assignments for developers'
-                            : 'View users and their project assignments'}
-                </Typography>
-            </Box>
+           const getRoleColor = (role: UserRole) => {
+               switch (role) {
+                   case UserRole.ADMIN:
+                       return 'error';
+                   case UserRole.PM:
+                       return 'warning';
+                   case UserRole.DEVELOPER:
+                       return 'primary';
+                   default:
+                       return 'default';
+               }
+           };
 
-            {error && (
-                <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
-                    {error}
-                </Alert>
-            )}
+           const getUserAvatar = (username: string) => username.charAt(0).toUpperCase();
 
-            {/* Users List Table */}
-            <UserTable
-                users={users}
-                currentUser={currentUser}
-                userProjects={userProjects}
-                projects={projects}
-                isAdmin={isAdmin}
-                isPM={isPM}
-                isDeveloper={isDeveloper}
-                canChangeRole={canChangeRole}
-                canAssignProject={canAssignProject}
-                canRemoveFromProject={canRemoveFromProject}
-                onRoleChangeClick={(user) => {
-                    setSelectedUser(user);
-                    setSelectedRole(user.role as UserRole);
-                    setOpenRoleDialog(true);
-                }}
-                onAssignProjectClick={(user) => {
-                    setSelectedUser(user);
-                    setSelectedProjectId('');
-                    setOpenAssignDialog(true);
-                }}
-                onRemoveProjectClick={handleRemoveProject}
-                getRoleIcon={getRoleIcon}
-                getRoleColor={getRoleColor}
-                getUserAvatar={getUserAvatar}
-            />
+           if (loading) {
+               return (
+                   <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
+                       <CircularProgress />
+                   </Box>
+               );
+           }
 
-            {/* Role Change Dialog - ТОЛЬКО ДЛЯ АДМИНА */}
-            {isAdmin() && (
-                <RoleChangeDialog
-                    open={openRoleDialog}
-                    selectedUser={selectedUser}
-                    selectedRole={selectedRole}
-                    onClose={() => setOpenRoleDialog(false)}
-                    onRoleChange={handleRoleChange}
-                    onRoleSelect={setSelectedRole}
-                    getUserAvatar={getUserAvatar}
-                />
-            )}
+           return (
+               <Box>
+                   <Box sx={{ mb: 3 }}>
+                       <Typography variant="h4" gutterBottom>
+                           User Management
+                       </Typography>
+                       <Typography variant="body2" color="text.secondary">
+                           {isAdmin()
+                               ? 'Manage user roles and project assignments'
+                               : isPM()
+                                   ? 'Manage project assignments for developers'
+                                   : 'View users and their project assignments'}
+                       </Typography>
+                   </Box>
 
-            {/* Assign Project Dialog - ТОЛЬКО ДЛЯ АДМИНА И PM */}
-            {(isAdmin() || isPM()) && (
-                <AssignProjectDialog
-                    open={openAssignDialog}
-                    selectedUser={selectedUser}
-                    selectedProjectId={selectedProjectId}
-                    projects={projects}
-                    userProjects={userProjects}
-                    onClose={() => setOpenAssignDialog(false)}
-                    onAssignProject={handleAssignProject}
-                    onProjectSelect={setSelectedProjectId}
-                    getUserAvatar={getUserAvatar}
-                    getRoleColor={getRoleColor}
-                />
-            )}
-        </Box>
-    );
-};
+                   {error && (
+                       <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+                           {error}
+                       </Alert>
+                   )}
 
-export default UsersPage;
+                   <UserTable
+                       users={users}
+                       currentUser={currentUser}
+                       userProjects={userProjects}
+                       projects={projects}
+                       isAdmin={isAdmin}
+                       isPM={isPM}
+                       isDeveloper={isDeveloper}
+                       canChangeRole={canChangeRole}
+                       canAssignProject={canAssignProject}
+                       canRemoveFromProject={canRemoveFromProject}
+                       getNotificationState={getNotificationState}
+                       canSetupNotification={canSetupNotification}
+                       setupLoadingUserId={setupLoadingUserId}
+                       onRoleChangeClick={(user) => {
+                           setSelectedUser(user);
+                           setSelectedRole(user.role as UserRole);
+                           setOpenRoleDialog(true);
+                       }}
+                       onAssignProjectClick={(user) => {
+                           setSelectedUser(user);
+                           setSelectedProjectId('');
+                           setOpenAssignDialog(true);
+                       }}
+                       onRemoveProjectClick={handleRemoveProject}
+                       onSetupNotificationClick={handleSetupNotification}
+                       getRoleIcon={getRoleIcon}
+                       getRoleColor={getRoleColor}
+                       getUserAvatar={getUserAvatar}
+                   />
+
+                   {isAdmin() && (
+                       <RoleChangeDialog
+                           open={openRoleDialog}
+                           selectedUser={selectedUser}
+                           selectedRole={selectedRole}
+                           onClose={() => setOpenRoleDialog(false)}
+                           onRoleChange={handleRoleChange}
+                           onRoleSelect={setSelectedRole}
+                           getUserAvatar={getUserAvatar}
+                       />
+                   )}
+
+                   {(isAdmin() || isPM()) && (
+                       <AssignProjectDialog
+                           open={openAssignDialog}
+                           selectedUser={selectedUser}
+                           selectedProjectId={selectedProjectId}
+                           projects={projects}
+                           userProjects={userProjects}
+                           onClose={() => setOpenAssignDialog(false)}
+                           onAssignProject={handleAssignProject}
+                           onProjectSelect={setSelectedProjectId}
+                           getUserAvatar={getUserAvatar}
+                           getRoleColor={getRoleColor}
+                       />
+                   )}
+               </Box>
+           );
+       };
+
+       export default UsersPage;

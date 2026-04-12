@@ -56,7 +56,8 @@ public class SecurityConfig {
                                 "/swagger-ui.html",
                                 "/v3/api-docs/**",
                                 "/v3/api-docs.yaml",
-                                "/swagger-resources/**"
+                                "/swagger-resources/**",
+                                "/iapi/notification/test/**"
                         ).permitAll()
                         .requestMatchers(
                                 "/login.html",
