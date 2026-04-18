@@ -29,7 +29,7 @@ const DashboardPage: React.FC = () => {
     const [newProjectName, setNewProjectName] = useState('');
     const [editingProject, setEditingProject] = useState<Project | null>(null);
     const navigate = useNavigate();
-    const { isAdmin} = useAuth();
+    const { isAdmin, isDeveloper, isPM } = useAuth();
 
     useEffect(() => {
         fetchProjects();
@@ -52,7 +52,7 @@ const DashboardPage: React.FC = () => {
     };
 
     const canEditProject = () => {
-        return isAdmin();
+        return isAdmin() || isDeveloper() || isPM();
     };
 
     const canDeleteProject = () => {
