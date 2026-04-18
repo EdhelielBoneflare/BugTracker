@@ -86,12 +86,13 @@ public class ProjectController {
     }
 
     @PatchMapping("/projects/{projectId}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PM')")
     public ResponseEntity<ProjectCreationUpdatingResponse> updateProject(
             @PathVariable @NotNull @NotBlank String projectId,
-            @RequestBody @Valid ProjectRequestBody request
+            @RequestBody @Valid ProjectRequestBody request,
+            Authentication authentication
     ) {
-        Project project = projectService.updateProject(projectId, request);
+        Project project = projectService.updateProject(projectId, request, authentication);
         ProjectCreationUpdatingResponse response = new ProjectCreationUpdatingResponse(
                 "Project updated", project.getId()
         );
@@ -99,10 +100,11 @@ public class ProjectController {
     }
 
     @DeleteMapping("/projects/{projectId}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PM')")
     public ResponseEntity<Project> deleteProject(
-            @PathVariable @NotNull @NotBlank String projectId
+            @PathVariable @NotNull @NotBlank String projectId,
+            Authentication authentication
     ) {
-        return ResponseEntity.ok(projectService.deleteProject(projectId));
+        return ResponseEntity.ok(projectService.deleteProject(projectId, authentication));
     }
 }
