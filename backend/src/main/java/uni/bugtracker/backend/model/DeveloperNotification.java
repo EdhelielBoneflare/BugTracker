@@ -4,7 +4,6 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
-import org.springframework.data.annotation.CreatedDate;
 
 import java.time.LocalDateTime;
 
@@ -16,13 +15,14 @@ import java.time.LocalDateTime;
 @Table(name="dev_notif")
 public class DeveloperNotification {
 
-    public enum state {
+    public enum State {
         REGISTERING,
         ACTIVE,
         DELETED
     }
 
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @NotNull
@@ -36,7 +36,8 @@ public class DeveloperNotification {
     private String projectId;
 
     @Column(nullable = false)
-    private String state;
+    @Enumerated(EnumType.STRING)
+    private DeveloperNotification.State state;
 
     @Column(name="chat_id")
     private Long chatId;
@@ -46,7 +47,6 @@ public class DeveloperNotification {
     private String regToken;
 
     @NotNull
-    @NotBlank
     @Column(name="created_at", nullable = false)
     private LocalDateTime createdAt;
 

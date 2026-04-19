@@ -28,4 +28,6 @@ public interface DeveloperRepository extends JpaRepository<Developer, String> {
         where d.id = :developerId
     """)
     List<Project> findProjectsByDeveloperId(@Param("developerId") String developerId);
+
+    List<Developer> findAllByProjects_Id(String projectId);
 }

@@ -1,5 +1,7 @@
 package uni.bugtracker.backend.service;
 
+import jakarta.annotation.PostConstruct;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -18,19 +20,28 @@ import java.util.Optional;
 @Slf4j
 @Component
 public class CriticalBugBot implements LongPollingSingleThreadUpdateConsumer {
-    @Value("${telegram.bot.token}")
-    private String botToken;
+    private final TelegramClient telegramClient;
 
-    private TelegramClient telegramClient = new OkHttpTelegramClient(botToken);
+    private final DeveloperNotificationRepository devRepo;
 
-    private DeveloperNotificationRepository devRepo;
+
+    public CriticalBugBot(
+            @Value("${telegram.bot.token}") String botToken,
+            DeveloperNotificationRepository devRepo
+    ) {
+        this.telegramClient = new OkHttpTelegramClient(botToken);
+        this.devRepo = devRepo;
+    }
 
     @Override
     public void consume(Update update) {
         // This method is called every time bot receives a message
+        log.info("Received update: {}", update);
         if (update.hasMessage() && update.getMessage().hasText()) {
             String text = update.getMessage().getText();
             Long chatId = update.getMessage().getChatId();
+
+            log.info("Message text: {}, chatId: {}", text, chatId);
 
             if (text.startsWith("/start")) {
                 String token = text.replace("/start", "").trim();
@@ -41,22 +52,26 @@ public class CriticalBugBot implements LongPollingSingleThreadUpdateConsumer {
     }
 
     private void handleStartCommand(long chatId, String token) {
-        Optional<DeveloperNotification> userOpt = devRepo.findByRegTokenAndStates(token, List.of(DeveloperNotification.state.REGISTERING, DeveloperNotification.state.ACTIVE));
+        Optional<DeveloperNotification> userOpt = devRepo.findByRegTokenAndStates(token, List.of(DeveloperNotification.State.REGISTERING, DeveloperNotification.State.ACTIVE));
 
         if (userOpt.isPresent()) {
             DeveloperNotification user = userOpt.get();
-            user.setState("active");
-            user.setChatId(chatId);
-            devRepo.save(user);
+            if (user.getState().equals(DeveloperNotification.State.REGISTERING)) {
+                user.setState(DeveloperNotification.State.ACTIVE);
+                user.setChatId(chatId);
+                devRepo.save(user);
 
-            sendMessage(chatId, "You're now subscribed to critical bug alerts!");
+                sendMessage(chatId, "You're now subscribed to critical bug alerts!");
+            } else {
+                sendMessage(chatId, "You're already subscribed to critical bug alerts!");
+            }
         } else {
             sendMessage(chatId, "Invalid or expired link. Please contact your administrator.");
         }
     }
 
     public void sendCriticalAlert(String projectId, String bugMessage) {
-        List<DeveloperNotification> activeNotifs = devRepo.findByProjectIdAndStates(projectId, List.of(DeveloperNotification.state.ACTIVE));
+        List<DeveloperNotification> activeNotifs = devRepo.findByProjectIdAndStates(projectId, List.of(DeveloperNotification.State.ACTIVE));
 
         for (DeveloperNotification notif : activeNotifs) {
             if (notif.getChatId() != null) {

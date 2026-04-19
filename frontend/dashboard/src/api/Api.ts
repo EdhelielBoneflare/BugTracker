@@ -1,4 +1,13 @@
-import { ApiResponse, Event, Project, Report, Session, User } from '../types/types';
+import {
+    ApiResponse,
+    Event,
+    Project,
+    Report,
+    Session,
+    User,
+    NotificationStateItem,
+    NotificationSetupResponse,
+} from '../types/types';
 
 class ApiClient {
     private readonly baseUrl: string;
@@ -9,10 +18,7 @@ class ApiClient {
         this.token = localStorage.getItem('token');
     }
 
-    private async request<T>(
-        endpoint: string,
-        options: RequestInit = {}
-    ): Promise<T> {
+    private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
         const headers = this.prepareHeaders(options.headers);
 
         if (this.token) {
@@ -37,7 +43,6 @@ class ApiClient {
                 await this.handleErrorResponse(response);
             }
 
-            // Обновляем токен из заголовка ответа, если он есть
             const newToken = response.headers.get('Authorization');
             if (newToken && newToken.startsWith('Bearer ')) {
                 const tokenValue = newToken.replace('Bearer ', '');
@@ -51,9 +56,9 @@ class ApiClient {
             const contentType = response.headers.get('content-type');
             if (contentType && contentType.includes('application/json')) {
                 return await response.json();
-            } else {
-                return {} as T;
             }
+
+            return {} as T;
         } catch (error) {
             console.error(`API request error (${endpoint}):`, error);
             if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
@@ -66,7 +71,7 @@ class ApiClient {
     private prepareHeaders(inputHeaders?: HeadersInit): Record<string, string> {
         const headers: Record<string, string> = {
             'Content-Type': 'application/json',
-            'Accept': 'application/json',
+            Accept: 'application/json',
         };
 
         if (!inputHeaders) return headers;
@@ -103,6 +108,7 @@ class ApiClient {
         try {
             errorData = await response.json();
         } catch {
+            // ignore json parse error
         }
 
         const errorMessage =
@@ -125,7 +131,7 @@ class ApiClient {
         localStorage.removeItem('user');
     }
 
-    // ============ АВТОРИЗАЦИЯ ============
+    // ============ AUTH ============
     async login(username: string, password: string) {
         const result = await this.request<{
             token: string;
@@ -151,7 +157,7 @@ class ApiClient {
         });
     }
 
-    // ============ ПРОЕКТЫ ============
+    // ============ PROJECTS ============
     async getMyProjects(): Promise<Project[]> {
         const data = await this.request<Project[]>('/api/my/projects');
         return Array.isArray(data) ? data : [];
@@ -182,8 +188,8 @@ class ApiClient {
         });
     }
 
-    // ============ ОТЧЕТЫ (REPORTS) ============
-    async getProjectReports(projectId: string, page: number = 0, size: number = 30): Promise<ApiResponse<Report>> {
+    // ============ REPORTS ============
+    async getProjectReports(projectId: string, page = 0, size = 30): Promise<ApiResponse<Report>> {
         return this.request(`/api/reports/byProject/${projectId}?page=${page}&size=${size}`);
     }
 
@@ -197,20 +203,23 @@ class ApiClient {
         });
     }
 
-    async updateReportDashboard(reportId: number, data: {
-        status?: string;
-        level?: string;
-        comments?: string;
-        projectId?: string;
-        developerName?: string;
-    }): Promise<Report> {
+    async updateReportDashboard(
+        reportId: number,
+        data: {
+            status?: string;
+            level?: string;
+            comments?: string;
+            projectId?: string;
+            developerName?: string;
+        }
+    ): Promise<Report> {
         return this.request(`/api/reports/${reportId}/dashboard`, {
             method: 'PATCH',
             body: JSON.stringify(data),
         });
     }
 
-    // ============ СЕССИИ ============
+    // ============ SESSIONS ============
     async getSession(sessionId: string): Promise<Session> {
         try {
             return await this.request<Session>(`/api/sessions/${sessionId}`);
@@ -220,13 +229,13 @@ class ApiClient {
         }
     }
 
-    // ============ СОБЫТИЯ (EVENTS) ============
+    // ============ EVENTS ============
     async getSessionEvents(sessionId: string): Promise<Event[]> {
         return this.request(`/api/events/session/${sessionId}`);
     }
 
-    // ============ АДМИН - ПОЛЬЗОВАТЕЛИ ============
-    async getAllUsers(page: number = 0, size: number = 30): Promise<{
+    // ============ USERS ============
+    async getAllUsers(page = 0, size = 30): Promise<{
         pageNumber: number;
         size: number;
         last: boolean;
@@ -264,7 +273,7 @@ class ApiClient {
             pageNumber: response.number,
             pageSize: response.size,
             last: response.last,
-            first: response.first
+            first: response.first,
         };
     }
 
@@ -281,7 +290,6 @@ class ApiClient {
         });
     }
 
-    // ============ НАЗНАЧЕНИЕ ПРОЕКТОВ ============
     async assignUserToProject(userId: string, projectId: string): Promise<User> {
         return this.request(`/api/users/${userId}/projects/assign/${projectId}`, {
             method: 'PATCH',
@@ -294,10 +302,28 @@ class ApiClient {
         });
     }
 
-    // ============ МЕТОД ДЛЯ ОТЛАДКИ CORS ============
     async testCors(): Promise<string> {
         return this.request('/auth/test-cors', {
             method: 'GET',
+        });
+    }
+
+    // ============ NOTIFICATIONS ============
+    async getNotificationStates(projectId: string): Promise<NotificationStateItem[]> {
+        if (!projectId) return [];
+
+        const data = await this.request<NotificationStateItem[]>(
+            `/api/notifications/states?projectId=${encodeURIComponent(projectId)}`,
+            { method: 'GET' }
+        );
+
+        return Array.isArray(data) ? data : [];
+    }
+
+    async setupUserNotifications(userId: string, projectId: string): Promise<NotificationSetupResponse> {
+        return this.request<NotificationSetupResponse>('/api/notifications/setup', {
+            method: 'POST',
+            body: JSON.stringify({ devId: userId, projectId }),
         });
     }
 }

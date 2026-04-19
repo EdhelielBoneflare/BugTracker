@@ -67,5 +67,5 @@ logging:
 
 telegram:
   bot:
-    username: ${TG_BOT_TOKEN}
-    token: ${TG_BOT_USERNAME}
+    username: ${TG_BOT_USERNAME}
+    token: ${TG_BOT_TOKEN}

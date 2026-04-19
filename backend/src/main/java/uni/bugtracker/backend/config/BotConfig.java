@@ -19,12 +19,13 @@ public class BotConfig {
     private String botUsername;
 
     @Bean
-    public void telegramBotsApi(CriticalBugBot criticalBugBot) throws TelegramApiException {
-        try {
-            TelegramBotsLongPollingApplication botsApplication = new TelegramBotsLongPollingApplication();
-            botsApplication.registerBot(botToken, criticalBugBot);
-        } catch (TelegramApiException e) {
-            throw new ResourceNotFoundException("TG ERROR: " + e.getMessage());
-        }
+    public TelegramBotsLongPollingApplication telegramBotsApplication(
+            @Value("${telegram.bot.token}") String botToken,
+            CriticalBugBot criticalBugBot
+    ) throws Exception {
+        TelegramBotsLongPollingApplication app = new TelegramBotsLongPollingApplication();
+        app.registerBot(botToken, criticalBugBot);
+        return app;
     }
+
 }
