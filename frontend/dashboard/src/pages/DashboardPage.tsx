@@ -56,7 +56,7 @@ const DashboardPage: React.FC = () => {
     };
 
     const canDeleteProject = () => {
-        return isAdmin();
+        return isAdmin() || isPM();
     };
 
     const handleCreateProject = async () => {
