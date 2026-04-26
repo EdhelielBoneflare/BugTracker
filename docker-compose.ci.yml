@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   postgres:
     image: postgres:15-alpine
@@ -7,22 +5,17 @@ services:
       POSTGRES_DB: ${DB_NAME:-bugtracker_db}
       POSTGRES_USER: ${DB_USERNAME:-postgres}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
-    command: >
-      sh -c "
-        docker-entrypoint.sh postgres &
-        sleep 10 &&
-        psql -U ${DB_USERNAME:-postgres} -d ${DB_NAME:-bugtracker_db} -c \"INSERT INTO project (id, name) VALUES ('test-project-id', 'test-project') ON CONFLICT (id) DO NOTHING;\"
-        wait
-      "
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-postgres}"]
-      interval: 10s
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-postgres} -d ${DB_NAME:-bugtracker_db}"]
+      interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 10s
     networks:
       - bugtracker-network
 
@@ -33,21 +26,28 @@ services:
       args:
         - GRADLE_OPTS=-Dorg.gradle.daemon=false -Dorg.gradle.parallel=true
     environment:
-      DB_URL: jdbc:postgresql://postgres:5432/${DB_NAME:-}
+      DB_URL: jdbc:postgresql://postgres:5432/${DB_NAME:-bugtracker_db}
       DB_USERNAME: ${DB_USERNAME:-postgres}
       DB_PASSWORD: ${DB_PASSWORD:-postgres}
 
-      JWT_SECRET: ${JWT_SECRET:-development-jwt-secret-change-me-in-production}
+      JWT_SECRET: ${JWT_SECRET:-MySuperSuperSuperSecretKeyForJwtSigning1234567890}
       JWT_EXPIRATION_TIME: ${JWT_EXPIRATION_TIME:-3600000}
 
       SPRING_JPA_HIBERNATE_DDL_AUTO: ${SPRING_JPA_HIBERNATE_DDL_AUTO:-update}
       SPRING_JPA_SHOW_SQL: ${SPRING_JPA_SHOW_SQL:-false}
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-default}
 
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin123}
+
+      TG_BOT_TOKEN: ${TG_BOT_TOKEN:-}
+      TG_BOT_USERNAME: ${TG_BOT_USERNAME:-}
+
       OPENAI_KEY: ${OPENAI_KEY:-}
 
-      # CORS настройки
-      APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS:-}
+      # CORS настройки - ИСПРАВЛЕНО
+      #APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS:-http://localhost:3000}
+      APP_CORS_ALLOWED_ORIGIN_PATTERNS: ${APP_CORS_ALLOWED_ORIGIN_PATTERNS:-http://localhost:3000}
       SERVER_PORT: 8080
 
       LOGGING_LEVEL_ORG_SPRINGFRAMEWORK: ${LOGGING_LEVEL_ORG_SPRINGFRAMEWORK:-WARN}
@@ -70,22 +70,22 @@ services:
       - backend-logs:/app/logs
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
     networks:
       - bugtracker-network
-    restart: "no"
+    restart: on-failure
 
   dashboard:
     build:
       context: ./frontend/dashboard
       dockerfile: Dockerfile
     environment:
-      REACT_APP_API_URL: http://backend:8080/api
+      REACT_APP_API_URL: http://localhost:8080/api
       REACT_APP_EXTERNAL_API_URL: http://localhost:8080/api
-      REACT_APP_WS_URL: ws://backend:8080/ws
+      REACT_APP_WS_URL: ws://localhost:8080/ws
       REACT_APP_WIDGET_URL: https://edhelielboneflare.github.io/BugTracker/bugtracker.js
       REACT_APP_DEFAULT_PROJECT_ID: test-project-id
       NODE_ENV: production
@@ -102,6 +102,19 @@ services:
       retries: 3
     networks:
       - bugtracker-network
+    restart: on-failure
+
+  widget:
+    build:
+      context: ./frontend/widget
+      dockerfile: Dockerfile
+    ports:
+      - "8081:80"
+    volumes:
+      - widget-logs:/var/log/nginx
+    networks:
+      - bugtracker-network
+    restart: on-failure
 
 volumes:
   postgres_data:
@@ -109,6 +122,8 @@ volumes:
   backend-logs:
     driver: local
   dashboard-logs:
+    driver: local
+  widget-logs:
     driver: local
 
 networks:

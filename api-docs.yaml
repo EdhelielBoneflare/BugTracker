@@ -1,0 +1,1067 @@
+openapi: 3.1.0
+info:
+  title: OpenAPI definition
+  version: v0
+servers:
+- url: http://localhost:8080
+  description: Generated server url
+paths:
+  /auth/register:
+    post:
+      tags:
+      - auth-controller
+      operationId: register
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: object
+  /auth/login:
+    post:
+      tags:
+      - auth-controller
+      operationId: login
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuthRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: object
+  /api/sessions:
+    post:
+      tags:
+      - session-controller
+      operationId: createSession
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SessionRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SessionCreationResponse"
+  /api/reports/widget:
+    post:
+      tags:
+      - report-controller
+      operationId: create
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                request:
+                  $ref: "#/components/schemas/ReportCreationRequestWidget"
+                screen:
+                  type: string
+                  format: binary
+              required:
+              - request
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: object
+  /api/projects:
+    get:
+      tags:
+      - project-controller
+      operationId: getProjects
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Project"
+    post:
+      tags:
+      - project-controller
+      operationId: addProject
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProjectRequestBody"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProjectCreationUpdatingResponse"
+  /api/notifications/setup:
+    post:
+      tags:
+      - notification-controller
+      operationId: addDevNotification
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NotificationSetupRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/NotificationSetupResponse"
+  /api/events:
+    post:
+      tags:
+      - event-controller
+      operationId: createEvent
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EventRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: object
+                additionalProperties: {}
+  /api/users/{userId}/projects/remove/{projectId}:
+    patch:
+      tags:
+      - project-controller
+      operationId: removeProjectFromUser
+      parameters:
+      - name: userId
+        in: path
+        required: true
+        schema:
+          type: string
+          minLength: 1
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+          minLength: 1
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/UserDTO"
+  /api/users/{userId}/projects/assign/{projectId}:
+    patch:
+      tags:
+      - project-controller
+      operationId: assignProjectToUser
+      parameters:
+      - name: userId
+        in: path
+        required: true
+        schema:
+          type: string
+          minLength: 1
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+          minLength: 1
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/UserDTO"
+  /api/reports/{id}/dashboard:
+    patch:
+      tags:
+      - report-controller
+      operationId: updateDev
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReportUpdateRequestDashboard"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ReportCardDTO"
+  /api/projects/{projectId}:
+    delete:
+      tags:
+      - project-controller
+      operationId: deleteProject
+      parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+          minLength: 1
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/Project"
+    patch:
+      tags:
+      - project-controller
+      operationId: updateProject
+      parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+          minLength: 1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProjectRequestBody"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProjectCreationUpdatingResponse"
+  /api/admin/users/{userId}/role:
+    patch:
+      tags:
+      - admin-user-controller
+      operationId: changeRole
+      parameters:
+      - name: userId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: role
+        in: query
+        required: true
+        schema:
+          type: string
+          enum:
+          - DEVELOPER
+          - PM
+          - ADMIN
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/UserDTO"
+  /iapi/notification/test/{projectId}:
+    get:
+      tags:
+      - notification-controller
+      operationId: sendTestNotif
+      parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+  /api/sessions/{id}:
+    get:
+      tags:
+      - session-controller
+      operationId: getSession
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SessionDetailsResponse"
+  /api/reports/{reportId}:
+    get:
+      tags:
+      - report-controller
+      operationId: getReportCard
+      parameters:
+      - name: reportId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ReportCardDTO"
+  /api/reports/{reportId}/screenshot:
+    get:
+      tags:
+      - report-controller
+      operationId: getScreenshot
+      parameters:
+      - name: reportId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: string
+                format: byte
+  /api/reports/tags:
+    get:
+      tags:
+      - report-controller
+      operationId: getTags
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  type: string
+  /api/reports/byProject/{projectId}:
+    get:
+      tags:
+      - report-controller
+      operationId: getAllByProject
+      parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: pageable
+        in: query
+        required: true
+        schema:
+          $ref: "#/components/schemas/Pageable"
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PageReportDashboardDTO"
+  /api/reports/byProject/{projectId}/solved:
+    get:
+      tags:
+      - report-controller
+      operationId: getAllReportsSolved
+      parameters:
+      - name: pageable
+        in: query
+        required: true
+        schema:
+          $ref: "#/components/schemas/Pageable"
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PageReportDashboardDTO"
+  /api/notifications/states:
+    get:
+      tags:
+      - notification-controller
+      operationId: getNotificationStates
+      parameters:
+      - name: projectId
+        in: query
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/NotificationStateResponse"
+  /api/my/projects:
+    get:
+      tags:
+      - project-controller
+      operationId: getAllProjectsForCurrentUser
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Project"
+  /api/events/{id}:
+    get:
+      tags:
+      - event-controller
+      operationId: getEvent
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/EventDetailsResponse"
+  /api/events/session/{sessionId}:
+    get:
+      tags:
+      - event-controller
+      operationId: getEventsBySession
+      parameters:
+      - name: sessionId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/EventDetailsResponse"
+  /api/admin/users:
+    get:
+      tags:
+      - admin-user-controller
+      operationId: getAll
+      parameters:
+      - name: pageable
+        in: query
+        required: true
+        schema:
+          $ref: "#/components/schemas/Pageable"
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PageUserDTO"
+  /api/reports/{id}:
+    delete:
+      tags:
+      - report-controller
+      operationId: delete
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ReportCardDTO"
+components:
+  schemas:
+    RegisterRequest:
+      type: object
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+    AuthRequest:
+      type: object
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+    SessionRequest:
+      type: object
+      properties:
+        projectId:
+          type: string
+          minLength: 1
+        startTime:
+          type: string
+          format: date-time
+        browser:
+          type: string
+        browserVersion:
+          type: string
+        os:
+          type: string
+        deviceType:
+          type: string
+          pattern: ^(?i)(desktop|mobile|tablet)$
+        screenResolution:
+          type: string
+          pattern: ^\d+x\d+$
+        viewportSize:
+          type: string
+          pattern: ^\d+x\d+$
+        language:
+          type: string
+        userAgent:
+          type: string
+        ipAddress:
+          type: string
+          pattern: "^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$|^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$"
+        cookiesHash:
+          type: string
+        plugins:
+          type: array
+          items:
+            type: string
+      required:
+      - projectId
+      - startTime
+    SessionCreationResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        sessionId:
+          type: integer
+          format: int64
+    ReportCreationRequestWidget:
+      type: object
+      properties:
+        projectId:
+          type: string
+          minLength: 1
+        sessionId:
+          type: integer
+          format: int64
+        title:
+          type: string
+          maxLength: 255
+          minLength: 0
+        tags:
+          type: array
+          items:
+            type: string
+          maxItems: 10
+          minItems: 0
+        reportedAt:
+          type: string
+          format: date-time
+        comments:
+          type: string
+          maxLength: 5000
+          minLength: 0
+        userEmail:
+          type: string
+          format: email
+        currentUrl:
+          type: string
+          minLength: 1
+        userProvided:
+          type: boolean
+      required:
+      - currentUrl
+      - projectId
+      - reportedAt
+      - sessionId
+      - tags
+      - title
+      - userProvided
+    ProjectRequestBody:
+      type: object
+      properties:
+        projectName:
+          type: string
+          minLength: 1
+      required:
+      - projectName
+    ProjectCreationUpdatingResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        projectId:
+          type: string
+    NotificationSetupRequest:
+      type: object
+      properties:
+        devId:
+          type: string
+          minLength: 1
+        projectId:
+          type: string
+          minLength: 1
+      required:
+      - devId
+      - projectId
+    NotificationSetupResponse:
+      type: object
+      properties:
+        setupUrl:
+          type: string
+    EventRequest:
+      type: object
+      properties:
+        sessionId:
+          type: integer
+          format: int64
+        type:
+          type: string
+          enum:
+          - ERROR
+          - ACTION
+          - PERFORMANCE
+          - NETWORK
+          - CUSTOM
+        name:
+          type: string
+          minLength: 1
+        log:
+          type: string
+        stackTrace:
+          type: string
+        url:
+          type: string
+          minLength: 1
+        element:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        metadata:
+          $ref: "#/components/schemas/MetadataPart"
+      required:
+      - name
+      - sessionId
+      - timestamp
+      - type
+      - url
+    MetadataPart:
+      type: object
+      properties:
+        fileName:
+          type: string
+        lineNumber:
+          type: string
+          pattern: "^[0-9]*$"
+        statusCode:
+          type: string
+          pattern: "^[0-9]*$"
+    UserDTO:
+      type: object
+      properties:
+        id:
+          type: string
+        username:
+          type: string
+        role:
+          type: string
+          enum:
+          - DEVELOPER
+          - PM
+          - ADMIN
+        projectIds:
+          type: array
+          items:
+            type: string
+          uniqueItems: true
+    ReportUpdateRequestDashboard:
+      type: object
+      properties:
+        projectId:
+          type: string
+          minLength: 1
+        title:
+          type: string
+          description: Nullable title - null clears the field
+          maxLength: 255
+          minLength: 1
+        tags:
+          type: array
+          description: Nullable tags - null clears the field
+          items:
+            type: string
+          maxItems: 10
+          minItems: 0
+        reportedAt:
+          type: string
+          format: date-time
+        comments:
+          type: string
+          description: Nullable comments - null clears the field
+          maxLength: 5000
+          minLength: 1
+        developerName:
+          type: string
+          description: Nullable developerName - null clears the field
+        level:
+          type: string
+          description: Nullable criticality level - null clears the field
+          enum:
+          - LOW
+          - MEDIUM
+          - HIGH
+          - CRITICAL
+          - UNKNOWN
+        status:
+          type: string
+          enum:
+          - NEW
+          - IN_PROGRESS
+          - DONE
+        userProvided:
+          type: boolean
+      required:
+      - projectId
+    ReportCardDTO:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        projectId:
+          type: string
+        sessionId:
+          type: integer
+          format: int64
+        title:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        reportedAt:
+          type: string
+          format: date-time
+        comments:
+          type: string
+        userEmail:
+          type: string
+        screenUrl:
+          type: string
+        currentUrl:
+          type: string
+        userProvided:
+          type: boolean
+        eventIDs:
+          type: array
+          items:
+            type: integer
+            format: int64
+        level:
+          type: string
+        status:
+          type: string
+        developerName:
+          type: string
+    SessionDetailsResponse:
+      type: object
+      properties:
+        sessionId:
+          type: integer
+          format: int64
+        projectId:
+          type: string
+        isActive:
+          type: boolean
+        startTime:
+          type: string
+          format: date-time
+        endTime:
+          type: string
+          format: date-time
+        browser:
+          type: string
+        browserVersion:
+          type: string
+        os:
+          type: string
+        deviceType:
+          type: string
+        screenResolution:
+          type: string
+        viewportSize:
+          type: string
+        language:
+          type: string
+        userAgent:
+          type: string
+        ipAddress:
+          type: string
+        plugins:
+          type: array
+          items:
+            type: string
+    Pageable:
+      type: object
+      properties:
+        page:
+          type: integer
+          format: int32
+          minimum: 0
+        size:
+          type: integer
+          format: int32
+          minimum: 1
+        sort:
+          type: array
+          items:
+            type: string
+    PageReportDashboardDTO:
+      type: object
+      properties:
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+        pageable:
+          $ref: "#/components/schemas/PageableObject"
+        first:
+          type: boolean
+        last:
+          type: boolean
+        size:
+          type: integer
+          format: int32
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReportDashboardDTO"
+        number:
+          type: integer
+          format: int32
+        sort:
+          $ref: "#/components/schemas/SortObject"
+        numberOfElements:
+          type: integer
+          format: int32
+        empty:
+          type: boolean
+    PageableObject:
+      type: object
+      properties:
+        paged:
+          type: boolean
+        pageNumber:
+          type: integer
+          format: int32
+        pageSize:
+          type: integer
+          format: int32
+        unpaged:
+          type: boolean
+        offset:
+          type: integer
+          format: int64
+        sort:
+          $ref: "#/components/schemas/SortObject"
+    ReportDashboardDTO:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        projectId:
+          type: string
+        title:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        reportedAt:
+          type: string
+          format: date-time
+        level:
+          type: string
+        status:
+          type: string
+    SortObject:
+      type: object
+      properties:
+        sorted:
+          type: boolean
+        unsorted:
+          type: boolean
+        empty:
+          type: boolean
+    Project:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+      required:
+      - name
+    NotificationStateResponse:
+      type: object
+      properties:
+        devId:
+          type: string
+          minLength: 1
+        projectId:
+          type: string
+          minLength: 1
+        state:
+          type: string
+          minLength: 1
+      required:
+      - devId
+      - projectId
+      - state
+    EventDetailsResponse:
+      type: object
+      properties:
+        eventId:
+          type: integer
+          format: int64
+        sessionId:
+          type: integer
+          format: int64
+        type:
+          type: string
+          enum:
+          - ERROR
+          - ACTION
+          - PERFORMANCE
+          - NETWORK
+          - CUSTOM
+        name:
+          type: string
+        log:
+          type: string
+        stackTrace:
+          type: string
+        url:
+          type: string
+        element:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        metadata:
+          $ref: "#/components/schemas/Metadata"
+    Metadata:
+      type: object
+      properties:
+        fileName:
+          type: string
+        lineNumber:
+          type: string
+        statusCode:
+          type: string
+    PageUserDTO:
+      type: object
+      properties:
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+        pageable:
+          $ref: "#/components/schemas/PageableObject"
+        first:
+          type: boolean
+        last:
+          type: boolean
+        size:
+          type: integer
+          format: int32
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/UserDTO"
+        number:
+          type: integer
+          format: int32
+        sort:
+          $ref: "#/components/schemas/SortObject"
+        numberOfElements:
+          type: integer
+          format: int32
+        empty:
+          type: boolean
